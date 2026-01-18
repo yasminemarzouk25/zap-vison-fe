@@ -1,0 +1,170 @@
+kind: pipeline
+type: kubernetes
+name: CI Pipeline
+
+trigger:
+  event: [push, tag]
+  branch: [master]
+  ref:
+    - refs/tags/v[0-9]+.[0-9]+.[0-9]+
+    - refs/tags/v[0-9]+.[0-9]+.[0-9]+-rc*
+
+environment:
+  SONAR_TOKEN:
+    from_secret: sonar_token
+  SONAR_HOST_URL:
+    from_secret: sonar_host_url
+
+clone:
+  depth: 0
+
+steps:
+
+
+- name: sonarqube
+  image: sonarsource/sonarqube-scan-action
+  environment:
+    SONAR_TOKEN:
+      from_secret: sonar_token
+    SONAR_HOST_URL:
+      from_secret: sonar_host_url
+  commands:
+    - |
+      sonar-scanner \
+        -Dsonar.projectKey=${DRONE_REPO_NAME} \
+        -Dsonar.sources=. \
+        -Dsonar.host.url=${SONAR_HOST_URL} \
+        -Dsonar.login=${SONAR_TOKEN} \
+        -Dsonar.projectVersion=${DRONE_TAG:-${DRONE_COMMIT_SHA:0:8}}
+
+
+- name: setup-env
+  image: alpine
+  environment:
+    DOCKER_USERNAME:
+      from_secret: docker_username
+    IMAGE_NAME:
+      from_secret: image_name
+    HELM_VALUES_SECTION_NAME:
+      from_secret: helm_values_section_name
+
+    RELEASE_REPO_DEV:
+      from_secret: release_repo_dev
+    RELEASE_REPO_STG:
+      from_secret: release_repo_stg
+    RELEASE_REPO_PRD:
+      from_secret: release_repo_prd
+
+    KUSTOMIZE_FOLDER_DEV:
+      from_secret: kustomize_folder_dev
+    KUSTOMIZE_FOLDER_STG:
+      from_secret: kustomize_folder_stg
+    KUSTOMIZE_FOLDER_PRD:
+      from_secret: kustomize_folder_prd
+
+    HELM_RELEASE_REPO:
+      from_secret: helm_release_repo
+    HELM_FOLDER_DEV:
+      from_secret: helm_folder_dev
+    HELM_FOLDER_STG:
+      from_secret: helm_folder_stg
+    HELM_FOLDER_PRD:
+      from_secret: helm_folder_prd
+
+    ENV_GLOBAL:
+      from_secret: env_global
+    ENV_DEV:
+      from_secret: env_dev
+    ENV_STG:
+      from_secret: env_stg
+    ENV_PRD:
+      from_secret: env_prd
+
+  commands:
+    - |
+      if [ "$DRONE_BRANCH" = "master" ]; then
+        ENVIRONMENT="development"
+        ENV_FILE="$ENV_GLOBAL\n$ENV_DEV"
+        RELEASE_REPO="$RELEASE_REPO_DEV"
+        KUSTOMIZE_FOLDER="$KUSTOMIZE_FOLDER_DEV"
+        HELM_FOLDER="$HELM_FOLDER_DEV"
+        HELM_TAG="$DRONE_COMMIT_SHA"
+        DOCKER_TAG="${DOCKER_USERNAME}/${IMAGE_NAME}:${DRONE_COMMIT_SHA}"
+
+      elif [[ "$DRONE_TAG" == *"-rc"* ]]; then
+        ENVIRONMENT="staging"
+        ENV_FILE="$ENV_GLOBAL\n$ENV_STG"
+        RELEASE_REPO="$RELEASE_REPO_STG"
+        KUSTOMIZE_FOLDER="$KUSTOMIZE_FOLDER_STG"
+        HELM_FOLDER="$HELM_FOLDER_STG"
+        HELM_TAG="$DRONE_TAG"
+        DOCKER_TAG="${DOCKER_USERNAME}/${IMAGE_NAME}:${DRONE_TAG}"
+
+      else
+        ENVIRONMENT="production"
+        ENV_FILE="$ENV_GLOBAL\n$ENV_PRD"
+        RELEASE_REPO="$RELEASE_REPO_PRD"
+        KUSTOMIZE_FOLDER="$KUSTOMIZE_FOLDER_PRD"
+        HELM_FOLDER="$HELM_FOLDER_PRD"
+        HELM_TAG="$DRONE_TAG"
+        DOCKER_TAG="${DOCKER_USERNAME}/${IMAGE_NAME}:${DRONE_TAG}"
+      fi
+
+      echo "ENVIRONMENT=$ENVIRONMENT" >> $DRONE_OUTPUT
+      echo "ENV_FILE=$ENV_FILE" >> $DRONE_OUTPUT
+      echo "RELEASE_REPO=$RELEASE_REPO" >> $DRONE_OUTPUT
+      echo "KUSTOMIZE_FOLDER=$KUSTOMIZE_FOLDER" >> $DRONE_OUTPUT
+      echo "HELM_FOLDER=$HELM_FOLDER" >> $DRONE_OUTPUT
+      echo "DOCKER_TAG=$DOCKER_TAG" >> $DRONE_OUTPUT
+      echo "HELM_TAG=$HELM_TAG" >> $DRONE_OUTPUT
+
+
+- name: build
+  image: plugins/docker
+  settings:
+    repo: ${DOCKER_USERNAME}/${IMAGE_NAME}
+    tags: ${HELM_TAG}
+    dockerfile: Dockerfile
+    build_args_from_env:
+      - ENV_FILE
+    username:
+      from_secret: docker_username
+    password:
+      from_secret: docker_password
+
+- name: request_deployment_approval
+  image: python:3.9-alpine
+  environment:
+    EMAIL_ADDRESS:
+      from_secret: email_username
+    EMAIL_PASSWORD:
+      from_secret: email_password
+    PROJECT_ID:
+      from_secret: project_id
+    CLONE_COMMAND:
+      from_secret: clone_command
+  commands:
+    - apk add --no-cache git
+    - git clone $CLONE_COMMAND
+    - pip install -r application-scripts/Pipelines/approval/requirements.txt
+    - python3 application-scripts/Pipelines/approval/approval-oneperson.py
+  when:
+    event: tag
+
+
+- name: kustomize-release
+  image: alpine/git
+  environment:
+    GITHUB_TOKEN:
+      from_secret: github_token
+  commands:
+    - |
+      apk add --no-cache bash curl
+      git clone https://x-access-token:${GITHUB_TOKEN}@github.com/${RELEASE_REPO}.git repo
+      cd repo
+      echo "$ENV_FILE" > ${KUSTOMIZE_FOLDER}/envs/config.env
+      curl -s https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh | bash
+      cd ${KUSTOMIZE_FOLDER}
+      ./kustomize edit set image ${DOCKER_TAG}
+      git commit -am "Deploy ${DOCKER_TAG}"
+      git push
