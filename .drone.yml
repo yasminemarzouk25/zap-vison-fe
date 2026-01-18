@@ -1,6 +1,6 @@
 kind: pipeline
 type: docker
-name: CI Pipeline
+name: ci-pipeline
 
 trigger:
   branch:
@@ -8,16 +8,12 @@ trigger:
   event:
     - push
     - tag
-  ref:
-    - refs/tags/v[0-9]+.[0-9]+.[0-9]+
-    - refs/tags/v[0-9]+.[0-9]+.[0-9]+-avaxia*
-    - refs/tags/v[0-9]+.[0-9]+.[0-9]+-rc*
 
 steps:
 
-# -------------------------
+# ---------------------------------------------------
 # SONARQUBE
-# -------------------------
+# ---------------------------------------------------
 - name: sonarqube
   image: sonarsource/sonar-scanner-cli
   environment:
@@ -28,154 +24,139 @@ steps:
   commands:
     - sonar-scanner
 
-# -------------------------
-# SET ENVIRONMENT
-# -------------------------
+# ---------------------------------------------------
+# SET ENVIRONMENT VARIABLES
+# ---------------------------------------------------
 - name: set-environment
-  image: node:20
-  depends_on:
-    - sonarqube
+  image: node:18
   environment:
-    # All values are secrets now
+    # Docker Hub
+    DOCKERHUB_USERNAME:
+      from_secret: DOCKERHUB_USERNAME
+    DOCKER_IMAGE_NAME:
+      from_secret: DOCKER_IMAGE_NAME
+
+    # DEV
     GHA_RELEASE_REPO_DEV:
       from_secret: GHA_RELEASE_REPO_DEV
-    GHA_RELEASE_REPO_STG:
-      from_secret: GHA_RELEASE_REPO_STG
-    GHA_RELEASE_REPO_PRD:
-      from_secret: GHA_RELEASE_REPO_PRD
-
-    GHA_HELM_RELEASE_REPO:
-      from_secret: GHA_HELM_RELEASE_REPO
-
+    GHA_PROJECT_REPO_DEV:
+      from_secret: GHA_PROJECT_REPO_DEV
     GHA_HELM_PROJECT_DEV:
       from_secret: GHA_HELM_PROJECT_DEV
+
+    # STG
+    GHA_RELEASE_REPO_STG:
+      from_secret: GHA_RELEASE_REPO_STG
+    GHA_PROJECT_REPO_STG:
+      from_secret: GHA_PROJECT_REPO_STG
     GHA_HELM_PROJECT_STG:
       from_secret: GHA_HELM_PROJECT_STG
+
+    # PRD
+    GHA_RELEASE_REPO_PRD:
+      from_secret: GHA_RELEASE_REPO_PRD
+    GHA_PROJECT_REPO_PRD:
+      from_secret: GHA_PROJECT_REPO_PRD
     GHA_HELM_PROJECT_PRD:
       from_secret: GHA_HELM_PROJECT_PRD
 
-    GHA_PROJECT_REPO_DEV:
-      from_secret: GHA_PROJECT_REPO_DEV
-    GHA_PROJECT_REPO_STG:
-      from_secret: GHA_PROJECT_REPO_STG
-    GHA_PROJECT_REPO_PRD:
-      from_secret: GHA_PROJECT_REPO_PRD
+  commands: |
+    node <<'EOF'
+    const fs = require('fs')
 
-    GHA_REGISTRY_NAME_DEV:
-      from_secret: GHA_REGISTRY_NAME_DEV
-    GHA_REGISTRY_NAME_STG:
-      from_secret: GHA_REGISTRY_NAME_STG
-    GHA_REGISTRY_NAME_PRD:
-      from_secret: GHA_REGISTRY_NAME_PRD
+    const isDev = process.env.DRONE_BRANCH === 'dev'
+    const isStg = process.env.DRONE_TAG && process.env.DRONE_TAG.includes('-rc')
+    const isPrd = process.env.DRONE_TAG && process.env.DRONE_TAG.includes('-avaxia')
 
-    GHA_REGISTRY_DOMAIN:
-      from_secret: GHA_REGISTRY_DOMAIN
+    let env = {}
+    let dockerTag = ""
 
-    GHA_IMAGE_NAME:
-      from_secret: GHA_IMAGE_NAME
+    if (isDev) {
+      env.environment = "development"
+      env.environment_display = "Dev"
+      env.release_repo = process.env.GHA_RELEASE_REPO_DEV
+      env.kustomize_folder = process.env.GHA_PROJECT_REPO_DEV
+      dockerTag = `${process.env.DOCKER_IMAGE_NAME}:${process.env.DRONE_COMMIT_SHA}`
+    } else if (isStg) {
+      env.environment = "staging"
+      env.environment_display = "Staging"
+      env.release_repo = process.env.GHA_RELEASE_REPO_STG
+      env.kustomize_folder = process.env.GHA_PROJECT_REPO_STG
+      dockerTag = `${process.env.DOCKER_IMAGE_NAME}:${process.env.DRONE_TAG}`
+    } else if (isPrd) {
+      env.environment = "production"
+      env.environment_display = "Production"
+      env.release_repo = process.env.GHA_RELEASE_REPO_PRD
+      env.kustomize_folder = process.env.GHA_PROJECT_REPO_PRD
+      dockerTag = `${process.env.DOCKER_IMAGE_NAME}:${process.env.DRONE_TAG}`
+    } else {
+      console.error("Unknown environment")
+      process.exit(1)
+    }
 
-    GHA_HELM_VALUES_SECTION_NAME:
-      from_secret: GHA_HELM_VALUES_SECTION_NAME
+    env.docker_tag = dockerTag
 
-    ACR_USERNAME_DEV:
-      from_secret: ACR_USERNAME_DEV
-    ACR_PASSWORD_DEV:
-      from_secret: ACR_PASSWORD_DEV
+    const content = Object.entries(env)
+      .map(([k, v]) => `${k}=${v}`)
+      .join('\n')
 
-    ACR_USERNAME_STG:
-      from_secret: ACR_USERNAME_STG
-    ACR_PASSWORD_STG:
-      from_secret: ACR_PASSWORD_STG
+    fs.writeFileSync('.env', content)
+    console.log(content)
+    EOF
 
-    ACR_USERNAME_PRD:
-      from_secret: ACR_USERNAME_PRD
-    ACR_PASSWORD_PRD:
-      from_secret: ACR_PASSWORD_PRD
-
-  commands:
-    - |
-      node <<'EOF'
-      const fs = require('fs')
-
-      const isDev = process.env.DRONE_BRANCH === 'dev'
-      const isStg = process.env.DRONE_TAG && process.env.DRONE_TAG.includes('-rc')
-      const isPrd = process.env.DRONE_TAG && process.env.DRONE_TAG.includes('-avaxia')
-
-      let env = {}
-
-      if (isDev) {
-        env.environment = "development"
-        env.environment_display = "Dev"
-        env.release_repo = process.env.GHA_RELEASE_REPO_DEV
-        env.helm_release_repo = process.env.GHA_HELM_RELEASE_REPO
-        env.kustomize_folder = process.env.GHA_PROJECT_REPO_DEV
-        env.helm_folder = process.env.GHA_HELM_PROJECT_DEV
-        env.acr_name = `${process.env.GHA_REGISTRY_NAME_DEV}.${process.env.GHA_REGISTRY_DOMAIN}`
-        env.acr_username = process.env.ACR_USERNAME_DEV
-        env.acr_password = process.env.ACR_PASSWORD_DEV
-        env.docker_tag = `${env.acr_name}/${process.env.GHA_IMAGE_NAME}:${process.env.DRONE_COMMIT_SHA}`
-        env.helm_tag = process.env.DRONE_COMMIT_SHA
-      } else if (isStg) {
-        env.environment = "staging"
-        env.environment_display = "Staging"
-        env.release_repo = process.env.GHA_RELEASE_REPO_STG
-        env.kustomize_folder = process.env.GHA_PROJECT_REPO_STG
-        env.helm_folder = process.env.GHA_HELM_PROJECT_STG
-        env.acr_name = `${process.env.GHA_REGISTRY_NAME_STG}.${process.env.GHA_REGISTRY_DOMAIN}`
-        env.acr_username = process.env.ACR_USERNAME_STG
-        env.acr_password = process.env.ACR_PASSWORD_STG
-        env.docker_tag = `${env.acr_name}/${process.env.GHA_IMAGE_NAME}:${process.env.DRONE_TAG}`
-        env.helm_tag = process.env.DRONE_TAG
-      } else if (isPrd) {
-        env.environment = "production"
-        env.environment_display = "Production"
-        env.release_repo = process.env.GHA_RELEASE_REPO_PRD
-        env.kustomize_folder = process.env.GHA_PROJECT_REPO_PRD
-        env.helm_folder = process.env.GHA_HELM_PROJECT_PRD
-        env.acr_name = `${process.env.GHA_REGISTRY_NAME_PRD}.${process.env.GHA_REGISTRY_DOMAIN}`
-        env.acr_username = process.env.ACR_USERNAME_PRD
-        env.acr_password = process.env.ACR_PASSWORD_PRD
-        env.docker_tag = `${env.acr_name}/${process.env.GHA_IMAGE_NAME}:${process.env.DRONE_TAG}`
-        env.helm_tag = process.env.DRONE_TAG
-      } else {
-        console.error("Unknown environment")
-        process.exit(1)
-      }
-
-      fs.writeFileSync('.drone-env', Object.entries(env).map(e => e.join('=')).join('\n'))
-      fs.writeFileSync('.env', fs.readFileSync('.drone-env'))
-      EOF
-
-# -------------------------
-# DOCKER BUILD & PUSH
-# -------------------------
+# ---------------------------------------------------
+# DOCKER BUILD & PUSH (Docker Hub)
+# ---------------------------------------------------
 - name: docker-build-push
-  image: docker:27
-  depends_on:
-    - set-environment
+  image: docker:24
   privileged: true
+  environment:
+    DOCKERHUB_USERNAME:
+      from_secret: DOCKERHUB_USERNAME
+    DOCKERHUB_PASSWORD:
+      from_secret: DOCKERHUB_PASSWORD
   commands:
-    - source .drone-env
-    - docker login $acr_name -u $acr_username -p $acr_password
-    - docker build -t $docker_tag $(for i in `cat .env`; do echo --build-arg $i; done) .
+    - source .env
+    - echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+    - docker build -t $docker_tag .
     - docker push $docker_tag
 
-# -------------------------
+# ---------------------------------------------------
+# PRODUCTION APPROVAL (TAG ONLY)
+# ---------------------------------------------------
+- name: request-deployment-approval
+  image: python:3.11
+  when:
+    event:
+      - tag
+  environment:
+    SMTP_SERVER:
+      from_secret: SMTP_SERVER
+    IMAP_SERVER:
+      from_secret: IMAP_SERVER
+    EMAIL_ADDRESS:
+      from_secret: EMAIL_ADDRESS
+    EMAIL_PASSWORD:
+      from_secret: EMAIL_PASSWORD
+    APPROVERS:
+      from_secret: APPROVERS
+    APPROVER_NAME:
+      from_secret: APPROVER_NAME
+  commands:
+    - python application-scripts/Pipelines/approval/approval-oneperson.py
+
+# ---------------------------------------------------
 # KUSTOMIZE RELEASE
-# -------------------------
+# ---------------------------------------------------
 - name: kustomize-release
-  image: alpine/git
-  depends_on:
-    - docker-build-push
+  image: bitnami/kubectl
   environment:
     GITHUB_TOKEN:
       from_secret: GITHUBTOKEN
   commands:
-    - source .drone-env
-    - git clone https://$GITHUB_TOKEN@github.com/$release_repo.git repo
-    - cd repo/$kustomize_folder
+    - source .env
+    - git clone https://$GITHUB_TOKEN@github.com/$release_repo.git
+    - cd $kustomize_folder
     - kustomize edit set image $docker_tag
-    - git config user.name "avaxiagroup"
-    - git config user.email "devops-team@avaxia-group.com"
-    - git commit -am "Pushing to $environment $docker_tag"
+    - git commit -am "Deploy $docker_tag"
     - git push
