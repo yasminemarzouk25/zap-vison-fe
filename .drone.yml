@@ -147,9 +147,7 @@ steps:
   commands:
     - python application-scripts/Pipelines/approval/approval-oneperson.py
 
-# ---------------------------------------------------
-# KUSTOMIZE RELEASE
-# ---------------------------------------------------
+
 - name: kustomize-release
   image: bitnami/kubectl
   environment:
