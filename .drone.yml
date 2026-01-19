@@ -60,49 +60,51 @@ steps:
     GHA_HELM_PROJECT_PRD:
       from_secret: GHA_HELM_PROJECT_PRD
 
-  commands: |
-    node <<'EOF'
-    const fs = require('fs')
+  commands:
+    - |
+      cat > /tmp/set_env.js << 'SCRIPT_EOF'
+      const fs = require('fs');
 
-    const isDev = process.env.DRONE_BRANCH === 'dev'
-    const isStg = process.env.DRONE_TAG && process.env.DRONE_TAG.includes('-rc')
-    const isPrd = process.env.DRONE_TAG && process.env.DRONE_TAG.includes('-avaxia')
+      const isDev = process.env.DRONE_BRANCH === 'dev';
+      const isStg = process.env.DRONE_TAG && process.env.DRONE_TAG.includes('-rc');
+      const isPrd = process.env.DRONE_TAG && process.env.DRONE_TAG.includes('-avaxia');
 
-    let env = {}
-    let dockerTag = ""
+      let env = {};
+      let dockerTag = "";
 
-    if (isDev) {
-      env.environment = "development"
-      env.environment_display = "Dev"
-      env.release_repo = process.env.GHA_RELEASE_REPO_DEV
-      env.kustomize_folder = process.env.GHA_PROJECT_REPO_DEV
-      dockerTag = `${process.env.DOCKER_IMAGE_NAME}:${process.env.DRONE_COMMIT_SHA}`
-    } else if (isStg) {
-      env.environment = "staging"
-      env.environment_display = "Staging"
-      env.release_repo = process.env.GHA_RELEASE_REPO_STG
-      env.kustomize_folder = process.env.GHA_PROJECT_REPO_STG
-      dockerTag = `${process.env.DOCKER_IMAGE_NAME}:${process.env.DRONE_TAG}`
-    } else if (isPrd) {
-      env.environment = "production"
-      env.environment_display = "Production"
-      env.release_repo = process.env.GHA_RELEASE_REPO_PRD
-      env.kustomize_folder = process.env.GHA_PROJECT_REPO_PRD
-      dockerTag = `${process.env.DOCKER_IMAGE_NAME}:${process.env.DRONE_TAG}`
-    } else {
-      console.error("Unknown environment")
-      process.exit(1)
-    }
+      if (isDev) {
+        env.environment = "development";
+        env.environment_display = "Dev";
+        env.release_repo = process.env.GHA_RELEASE_REPO_DEV;
+        env.kustomize_folder = process.env.GHA_PROJECT_REPO_DEV;
+        dockerTag = `${process.env.DOCKER_IMAGE_NAME}:${process.env.DRONE_COMMIT_SHA}`;
+      } else if (isStg) {
+        env.environment = "staging";
+        env.environment_display = "Staging";
+        env.release_repo = process.env.GHA_RELEASE_REPO_STG;
+        env.kustomize_folder = process.env.GHA_PROJECT_REPO_STG;
+        dockerTag = `${process.env.DOCKER_IMAGE_NAME}:${process.env.DRONE_TAG}`;
+      } else if (isPrd) {
+        env.environment = "production";
+        env.environment_display = "Production";
+        env.release_repo = process.env.GHA_RELEASE_REPO_PRD;
+        env.kustomize_folder = process.env.GHA_PROJECT_REPO_PRD;
+        dockerTag = `${process.env.DOCKER_IMAGE_NAME}:${process.env.DRONE_TAG}`;
+      } else {
+        console.error("Unknown environment");
+        process.exit(1);
+      }
 
-    env.docker_tag = dockerTag
+      env.docker_tag = dockerTag;
 
-    const content = Object.entries(env)
-      .map(([k, v]) => `${k}=${v}`)
-      .join('\n')
+      const content = Object.entries(env)
+        .map(([k, v]) => `${k}=${v}`)
+        .join('\n');
 
-    fs.writeFileSync('.env', content)
-    console.log(content)
-    EOF
+      fs.writeFileSync('.env', content);
+      console.log(content);
+      SCRIPT_EOF
+    - node /tmp/set_env.js
 
 # ---------------------------------------------------
 # DOCKER BUILD & PUSH (Docker Hub)
