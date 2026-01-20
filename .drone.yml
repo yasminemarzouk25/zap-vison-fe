@@ -85,8 +85,6 @@ steps:
 # -------------------------------------------------
 - name: build-and-push-acr
   image: gcr.io/kaniko-project/executor:debug
- 
- 
   environment:
     ACR_LOGIN_SERVER:
       from_secret: ACR_LOGIN_SERVER
@@ -113,7 +111,6 @@ steps:
       EOF
  
       . .env
-      export $(cut -d= -f1 .env)
  
       /kaniko/executor \
         --context . \
@@ -146,7 +143,7 @@ steps:
   commands:
     - |
       set -e
-      source .env
+      . .env
  
       git clone https://$GITHUBTOKEN@github.com/$RELEASE_REPO.git
       cd $KUSTOMIZE_FOLDER
