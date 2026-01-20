@@ -167,3 +167,4 @@ steps:
     - git config user.email "devops@avaxia-group.com"
     - git commit -am "Release $DOCKER_IMAGE"
     - git push
+#
