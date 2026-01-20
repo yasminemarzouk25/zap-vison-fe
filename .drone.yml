@@ -17,15 +17,15 @@ steps:
 # -------------------------
 # SonarQube Analysis
 # -------------------------
-- name: sonarqube
-  image: sonarsource/sonar-scanner-cli
-  environment:
-    SONAR_TOKEN:
-      from_secret: SONAR_TOKEN
-    SONAR_HOST_URL:
-      from_secret: SONAR_HOST_URL
-  commands:
-    - sonar-scanner
+# - name: sonarqube
+#   image: sonarsource/sonar-scanner-cli
+#   environment:
+#     SONAR_TOKEN:
+#       from_secret: SONAR_TOKEN
+#     SONAR_HOST_URL:
+#       from_secret: SONAR_HOST_URL
+#   commands:
+#     - sonar-scanner
  
 # -------------------------
 # Set Environment & .env
