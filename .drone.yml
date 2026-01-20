@@ -120,8 +120,9 @@ steps:
         process.exit(1);
       }
 
-      fs.writeFileSync('.env', Object.entries(env).map(e => e.join('=')).join('\\n'));
-      fs.writeFileSync('.outputs', Object.entries(outputs).map(e => e.join('=')).join('\\n'));
+      fs.writeFileSync('.env', Object.entries(env).map(e => e.join('=')).join(String.fromCharCode(10)));
+      fs.writeFileSync('.outputs', Object.entries(outputs).map(e => e.join('=')).join(String.fromCharCode(10)));
+
 
       "
 
