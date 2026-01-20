@@ -134,7 +134,7 @@ steps:
   environment:
     DOCKER_CONFIG: /kaniko/.docker
   commands:
-    - source .outputs
+    - . .outputs
     - |
       cat <<EOF > /kaniko/.docker/config.json
       {
@@ -151,6 +151,7 @@ steps:
       --context .
       --dockerfile Dockerfile
       --destination $docker_tag
+
 
 # -------------------------
 # Kustomize Release
