@@ -1,5 +1,5 @@
 kind: pipeline
-type: kubernetes 
+type: kubernetes
 name: ci-pipeline
 
 trigger:
@@ -112,7 +112,6 @@ steps:
 # ---------------------------------------------------
 - name: docker-build-push
   image: docker:24
-  privileged: true
   environment:
     DOCKERHUB_USERNAME:
       from_secret: DOCKERHUB_USERNAME
@@ -148,7 +147,9 @@ steps:
   commands:
     - python application-scripts/Pipelines/approval/approval-oneperson.py
 
-
+# ---------------------------------------------------
+# KUSTOMIZE RELEASE
+# ---------------------------------------------------
 - name: kustomize-release
   image: bitnami/kubectl
   environment:
