@@ -84,68 +84,41 @@ steps:
 # Build & Push to Azure Container Registry (Kaniko)
 # -------------------------------------------------
 - name: build-and-push-acr
-
-  image: gcr.io/kaniko-project/executor:v1.23.2
-
+  image: gcr.io/kaniko-project/executor:debug
   environment:
-
     ACR_LOGIN_SERVER:
-
       from_secret: ACR_LOGIN_SERVER
-
     ACR_USERNAME:
-
       from_secret: ACR_USERNAME
-
     ACR_PASSWORD:
-
       from_secret: ACR_PASSWORD
  
   commands:
-
     - |
-
       set -e
  
       mkdir -p /kaniko/.docker
  
       cat > /kaniko/.docker/config.json <<EOF
-
       {
-
         "auths": {
-
           "https://$ACR_LOGIN_SERVER": {
-
             "username": "$ACR_USERNAME",
-
             "password": "$ACR_PASSWORD"
-
           }
-
         }
-
       }
-
       EOF
  
       . .env
-
       export $(cut -d= -f1 .env)
  
       /kaniko/executor \
-
         --context . \
-
         --dockerfile Dockerfile \
-
         --destination "$IMAGE" \
-
         --cache=true \
-
-        --cache-repo "$(echo $IMAGE | cut -d: -f1)-cache"
-
- 
+        --cache-repo "$(echo $IMAGE | cut -d: -f1)-cache
 # -------------------------
 # Production Approval (TAG only)
 # -------------------------
