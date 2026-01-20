@@ -29,7 +29,9 @@ steps:
   environment:
     DRONE_BRANCH: ${DRONE_BRANCH}
     DRONE_TAG: ${DRONE_TAG}
+    DRONE_COMMIT_SHA: ${DRONE_COMMIT_SHA}
 
+    # GLOBAL
     GHA_HELM_VALUES_SECTION_NAME:
       from_secret: GHA_HELM_VALUES_SECTION_NAME
     GHA_IMAGE_NAME:
@@ -37,6 +39,7 @@ steps:
     GHA_REGISTRY_DOMAIN:
       from_secret: GHA_REGISTRY_DOMAIN
 
+    # DEV
     GHA_RELEASE_REPO_DEV:
       from_secret: GHA_RELEASE_REPO_DEV
     GHA_PROJECT_REPO_DEV:
@@ -50,6 +53,7 @@ steps:
     ACR_PASSWORD_DEV:
       from_secret: ACR_PASSWORD_DEV
 
+    # STG
     GHA_RELEASE_REPO_STG:
       from_secret: GHA_RELEASE_REPO_STG
     GHA_PROJECT_REPO_STG:
@@ -63,6 +67,7 @@ steps:
     ACR_PASSWORD_STG:
       from_secret: ACR_PASSWORD_STG
 
+    # PRD
     GHA_RELEASE_REPO_PRD:
       from_secret: GHA_RELEASE_REPO_PRD
     GHA_PROJECT_REPO_PRD:
@@ -80,24 +85,53 @@ steps:
     - |
       node <<'EOF'
       const fs = require('fs')
+
       let outputs = {}
+      let env = process.env
 
       if (process.env.DRONE_BRANCH === 'dev') {
         outputs.environment = 'development'
         outputs.environment_display = 'Dev'
-        outputs.release_repo = process.env.GHA_RELEASE_REPO_DEV
-        outputs.kustomize_folder = process.env.GHA_PROJECT_REPO_DEV
-        outputs.helm_folder = process.env.GHA_HELM_PROJECT_DEV
-        outputs.acr_name = `${process.env.GHA_REGISTRY_NAME_DEV}.${process.env.GHA_REGISTRY_DOMAIN}`
-        outputs.acr_username = process.env.ACR_USERNAME_DEV
-        outputs.acr_password = process.env.ACR_PASSWORD_DEV
-        outputs.docker_tag = `${outputs.acr_name}/${process.env.GHA_IMAGE_NAME}:${process.env.DRONE_COMMIT_SHA}`
-        outputs.helm_tag = process.env.DRONE_COMMIT_SHA
+        outputs.release_repo = env.GHA_RELEASE_REPO_DEV
+        outputs.kustomize_folder = env.GHA_PROJECT_REPO_DEV
+        outputs.helm_folder = env.GHA_HELM_PROJECT_DEV
+        outputs.acr_name = `${env.GHA_REGISTRY_NAME_DEV}.${env.GHA_REGISTRY_DOMAIN}`
+        outputs.acr_username = env.ACR_USERNAME_DEV
+        outputs.acr_password = env.ACR_PASSWORD_DEV
+        outputs.docker_tag = `${outputs.acr_name}/${env.GHA_IMAGE_NAME}:${env.DRONE_COMMIT_SHA}`
+        outputs.helm_tag = env.DRONE_COMMIT_SHA
+      }
+      else if (process.env.DRONE_TAG && process.env.DRONE_TAG.includes('-rc')) {
+        outputs.environment = 'staging'
+        outputs.environment_display = 'Staging'
+        outputs.release_repo = env.GHA_RELEASE_REPO_STG
+        outputs.kustomize_folder = env.GHA_PROJECT_REPO_STG
+        outputs.helm_folder = env.GHA_HELM_PROJECT_STG
+        outputs.acr_name = `${env.GHA_REGISTRY_NAME_STG}.${env.GHA_REGISTRY_DOMAIN}`
+        outputs.acr_username = env.ACR_USERNAME_STG
+        outputs.acr_password = env.ACR_PASSWORD_STG
+        outputs.docker_tag = `${outputs.acr_name}/${env.GHA_IMAGE_NAME}:${env.DRONE_TAG}`
+        outputs.helm_tag = env.DRONE_TAG
+      }
+      else if (process.env.DRONE_TAG && process.env.DRONE_TAG.includes('-avaxia')) {
+        outputs.environment = 'production'
+        outputs.environment_display = 'Production'
+        outputs.release_repo = env.GHA_RELEASE_REPO_PRD
+        outputs.kustomize_folder = env.GHA_PROJECT_REPO_PRD
+        outputs.helm_folder = env.GHA_HELM_PROJECT_PRD
+        outputs.acr_name = `${env.GHA_REGISTRY_NAME_PRD}.${env.GHA_REGISTRY_DOMAIN}`
+        outputs.acr_username = env.ACR_USERNAME_PRD
+        outputs.acr_password = env.ACR_PASSWORD_PRD
+        outputs.docker_tag = `${outputs.acr_name}/${env.GHA_IMAGE_NAME}:${env.DRONE_TAG}`
+        outputs.helm_tag = env.DRONE_TAG
+      }
+      else {
+        console.error('Unknown environment')
+        process.exit(1)
       }
 
-      fs.writeFileSync('.outputs',
-        Object.entries(outputs).map(e => e.join('=')).join('\n')
-      )
+      fs.writeFileSync('.env', Object.entries(env).map(e => e.join('=')).join('\n'))
+      fs.writeFileSync('.outputs', Object.entries(outputs).map(e => e.join('=')).join('\n'))
       EOF
 
 # -------------------------
@@ -125,6 +159,7 @@ steps:
       --context .
       --dockerfile Dockerfile
       --destination $docker_tag
+      $(cat .env | sed 's/^/--build-arg /')
 
 # -------------------------
 # Kustomize Release
