@@ -1,5 +1,5 @@
 kind: pipeline
-type: docker
+type: kubernetes
 name: ci-pipeline
 
 trigger:
@@ -139,15 +139,28 @@ steps:
 # Build & Push Docker
 # -------------------------
 - name: docker-build-push
-  image: docker:24
-  volumes:
-    - name: dockersock
-      path: /var/run/docker.sock
+  image: gcr.io/kaniko-project/executor:latest
+  environment:
+    DOCKER_CONFIG: /kaniko/.docker
   commands:
     - source .outputs
-    - docker login $acr_name -u $acr_username -p $acr_password
-    - docker build -t $docker_tag $(cat .env | sed 's/^/--build-arg /') .
-    - docker push $docker_tag
+    - |
+      cat <<EOF > /kaniko/.docker/config.json
+      {
+        "auths": {
+          "$acr_name": {
+            "username": "$acr_username",
+            "password": "$acr_password"
+          }
+        }
+      }
+      EOF
+    - >
+      /kaniko/executor
+      --context .
+      --dockerfile Dockerfile
+      --destination $docker_tag
+      $(cat .env | sed 's/^/--build-arg /')
 
 # -------------------------
 # Kustomize Release
