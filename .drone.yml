@@ -136,22 +136,22 @@ steps:
   commands:
     - . .outputs
     - |
-      cat <<EOF > /kaniko/.docker/config.json
-      {
-        "auths": {
-          "$acr_name": {
-            "username": "$acr_username",
-            "password": "$acr_password"
+        cat <<EOF > /kaniko/.docker/config.json
+        {
+          "auths": {
+            "$acr_name": {
+              "username": "$acr_username",
+              "password": "$acr_password"
+            }
           }
         }
-      }
-      EOF
-    - >
-      /kaniko/executor
-      --context .
-      --dockerfile Dockerfile
-      --destination $docker_tag
-      $(cat .env | sed 's/^/--build-arg /')
+        EOF
+    - |
+        /kaniko/executor \
+          --context . \
+          --dockerfile Dockerfile \
+          --destination "$docker_tag" \
+          $(cat .env | sed 's/^/--build-arg /')
 
 # -------------------------
 # Kustomize Release
