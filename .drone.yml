@@ -106,7 +106,7 @@ steps:
         DOCKER_NAMESPACE=$DOCKERHUB_NAMESPACE_PRD
 
       else
-        echo "❌ Unknown environment"
+        echo "Unknown environment"
         exit 1
       fi
 
