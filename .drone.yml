@@ -8,8 +8,6 @@ trigger:
     - tag
   branch:
     - dev
-  ref:
-    - refs/tags/v*
 
 volumes:
 - name: dockersock
