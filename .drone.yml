@@ -6,8 +6,11 @@ trigger:
   event:
     - push
     - tag
+    - custom
   branch:
     - dev
+  ref:
+    - refs/tags/v*
 
 volumes:
 - name: dockersock
