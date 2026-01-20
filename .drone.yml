@@ -3,14 +3,14 @@ type: kubernetes
 name: ci-pipeline
  
 trigger:
-  event:
-    - push
-    - tag
-    - custom
+  # event:
+  #   - push
+  #   - tag
+  #   - custom
   branch:
     - dev
-  ref:
-    - refs/tags/v*
+  # ref:
+  #   - refs/tags/v*
  
 steps:
  
