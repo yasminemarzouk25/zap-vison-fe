@@ -85,6 +85,8 @@ steps:
 # -------------------------------------------------
 - name: build-and-push-acr
   image: gcr.io/kaniko-project/executor:debug
+ 
+ 
   environment:
     ACR_LOGIN_SERVER:
       from_secret: ACR_LOGIN_SERVER
@@ -118,7 +120,7 @@ steps:
         --dockerfile Dockerfile \
         --destination "$IMAGE" \
         --cache=true \
-        --cache-repo "$(echo $IMAGE | cut -d: -f1)-cache
+        --cache-repo "$(echo $IMAGE | cut -d: -f1)-cache"
 # -------------------------
 # Production Approval (TAG only)
 # -------------------------
