@@ -5,11 +5,9 @@ name: ci-pipeline
 trigger:
   branch:
     - dev
-  # event:
-  #   - push
-  #   - tag
 
 steps:
+
   # -------------------------
   # SonarQube
   # -------------------------
@@ -31,9 +29,7 @@ steps:
     environment:
       DRONE_BRANCH: ${DRONE_BRANCH}
       DRONE_TAG: ${DRONE_TAG}
-      DRONE_COMMIT_SHA: ${DRONE_COMMIT_SHA}
 
-      # GLOBAL SECRETS
       GHA_HELM_VALUES_SECTION_NAME:
         from_secret: GHA_HELM_VALUES_SECTION_NAME
       GHA_IMAGE_NAME:
@@ -41,7 +37,6 @@ steps:
       GHA_REGISTRY_DOMAIN:
         from_secret: GHA_REGISTRY_DOMAIN
 
-      # DEV
       GHA_RELEASE_REPO_DEV:
         from_secret: GHA_RELEASE_REPO_DEV
       GHA_PROJECT_REPO_DEV:
@@ -55,7 +50,6 @@ steps:
       ACR_PASSWORD_DEV:
         from_secret: ACR_PASSWORD_DEV
 
-      # STG
       GHA_RELEASE_REPO_STG:
         from_secret: GHA_RELEASE_REPO_STG
       GHA_PROJECT_REPO_STG:
@@ -69,7 +63,6 @@ steps:
       ACR_PASSWORD_STG:
         from_secret: ACR_PASSWORD_STG
 
-      # PRD
       GHA_RELEASE_REPO_PRD:
         from_secret: GHA_RELEASE_REPO_PRD
       GHA_PROJECT_REPO_PRD:
@@ -124,9 +117,6 @@ steps:
           outputs.acr_password = process.env.ACR_PASSWORD_PRD
           outputs.docker_tag = `${outputs.acr_name}/${process.env.GHA_IMAGE_NAME}:${process.env.DRONE_TAG}`
           outputs.helm_tag = process.env.DRONE_TAG
-        } else {
-          console.error("Unexpected environment (not dev branch, not -rc tag, not -avaxia tag)")
-          process.exit(1)
         }
 
         fs.writeFileSync('.env', Object.entries(env).map(e => e.join('=')).join('\n'))
@@ -134,7 +124,7 @@ steps:
         EOF
 
   # -------------------------
-  # Build & Push Docker (Kaniko)
+  # Build & Push Docker
   # -------------------------
   - name: docker-build-push
     image: gcr.io/kaniko-project/executor:latest
