@@ -134,8 +134,7 @@ steps:
   environment:
     DOCKER_CONFIG: /kaniko/.docker
   commands:
-    - export $(cat .outputs | xargs)
-
+    - . .outputs
     - |
       cat <<EOF > /kaniko/.docker/config.json
       {
@@ -147,12 +146,12 @@ steps:
         }
       }
       EOF
-
-    - |
-      /kaniko/executor \
-        --context . \
-        --dockerfile Dockerfile \
-        --destination "$docker_tag"
+    - >
+      /kaniko/executor
+      --context .
+      --dockerfile Dockerfile
+      --destination $docker_tag
+      $(cat .env | sed 's/^/--build-arg /')
 
 # -------------------------
 # Kustomize Release
