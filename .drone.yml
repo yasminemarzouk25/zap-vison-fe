@@ -1,157 +1,168 @@
 kind: pipeline
-type: kubernetes
+type: docker
 name: ci-pipeline
- 
+
 trigger:
   branch:
     - dev
   # event:
   #   - push
   #   - tag
- 
+
 steps:
- 
+
 # -------------------------
-# Set Environment & .env
+# SonarQube
+# -------------------------
+# - name: sonarqube
+#   image: sonarsource/sonar-scanner-cli
+#   environment:
+#     SONAR_TOKEN:
+#       from_secret: SONAR_TOKEN
+#     SONAR_HOST_URL:
+#       from_secret: SONAR_HOST_URL
+#   commands:
+#     - sonar-scanner
+
+# -------------------------
+# Set environment (DEV / STG / PRD)
 # -------------------------
 - name: set-env
-  image: alpine:3.19
+  image: node:18
   environment:
+    # FLAGS
     DRONE_BRANCH: ${DRONE_BRANCH}
     DRONE_TAG: ${DRONE_TAG}
-    DRONE_COMMIT_SHA: ${DRONE_COMMIT_SHA}
- 
-    ACR_LOGIN_SERVER:
-      from_secret: ACR_LOGIN_SERVER
-    ACR_IMAGE_NAME:
-      from_secret: ACR_IMAGE_NAME
- 
+
+    # GLOBAL SECRETS
+    GHA_HELM_VALUES_SECTION_NAME:
+      from_secret: GHA_HELM_VALUES_SECTION_NAME
+    GHA_IMAGE_NAME:
+      from_secret: GHA_IMAGE_NAME
+    GHA_REGISTRY_DOMAIN:
+      from_secret: GHA_REGISTRY_DOMAIN
+
     # DEV
     GHA_RELEASE_REPO_DEV:
       from_secret: GHA_RELEASE_REPO_DEV
     GHA_PROJECT_REPO_DEV:
       from_secret: GHA_PROJECT_REPO_DEV
- 
+    GHA_HELM_PROJECT_DEV:
+      from_secret: GHA_HELM_PROJECT_DEV
+    GHA_REGISTRY_NAME_DEV:
+      from_secret: GHA_REGISTRY_NAME_DEV
+    ACR_USERNAME_DEV:
+      from_secret: ACR_USERNAME_DEV
+    ACR_PASSWORD_DEV:
+      from_secret: ACR_PASSWORD_DEV
+
     # STG
     GHA_RELEASE_REPO_STG:
       from_secret: GHA_RELEASE_REPO_STG
     GHA_PROJECT_REPO_STG:
       from_secret: GHA_PROJECT_REPO_STG
- 
+    GHA_HELM_PROJECT_STG:
+      from_secret: GHA_HELM_PROJECT_STG
+    GHA_REGISTRY_NAME_STG:
+      from_secret: GHA_REGISTRY_NAME_STG
+    ACR_USERNAME_STG:
+      from_secret: ACR_USERNAME_STG
+    ACR_PASSWORD_STG:
+      from_secret: ACR_PASSWORD_STG
+
     # PRD
     GHA_RELEASE_REPO_PRD:
       from_secret: GHA_RELEASE_REPO_PRD
     GHA_PROJECT_REPO_PRD:
       from_secret: GHA_PROJECT_REPO_PRD
- 
+    GHA_HELM_PROJECT_PRD:
+      from_secret: GHA_HELM_PROJECT_PRD
+    GHA_REGISTRY_NAME_PRD:
+      from_secret: GHA_REGISTRY_NAME_PRD
+    ACR_USERNAME_PRD:
+      from_secret: ACR_USERNAME_PRD
+    ACR_PASSWORD_PRD:
+      from_secret: ACR_PASSWORD_PRD
+
   commands:
     - |
-      set -e
- 
-      if [ "$DRONE_BRANCH" = "dev" ]; then
-        ENV=development
-        TAG=$DRONE_COMMIT_SHA
-        RELEASE_REPO=$GHA_RELEASE_REPO_DEV
-        KUSTOMIZE_FOLDER=$GHA_PROJECT_REPO_DEV
- 
-      elif echo "$DRONE_TAG" | grep -q -- "-rc"; then
-        ENV=staging
-        TAG=$DRONE_TAG
-        RELEASE_REPO=$GHA_RELEASE_REPO_STG
-        KUSTOMIZE_FOLDER=$GHA_PROJECT_REPO_STG
- 
-      elif echo "$DRONE_TAG" | grep -q -- "-avaxia"; then
-        ENV=production
-        TAG=$DRONE_TAG
-        RELEASE_REPO=$GHA_RELEASE_REPO_PRD
-        KUSTOMIZE_FOLDER=$GHA_PROJECT_REPO_PRD
- 
-      else
-        echo "Unknown environment"
-        exit 1
-      fi
- 
-      IMAGE="$ACR_LOGIN_SERVER/$ACR_IMAGE_NAME:$TAG"
- 
-      echo "ENV=$ENV" > .env
-      echo "IMAGE=$IMAGE" >> .env
-      echo "RELEASE_REPO=$RELEASE_REPO" >> .env
-      echo "KUSTOMIZE_FOLDER=$KUSTOMIZE_FOLDER" >> .env
- 
-      cat .env
- 
-# -------------------------------------------------
-# Build & Push to Azure Container Registry (Kaniko)
-# -------------------------------------------------
-- name: build-and-push-acr
-  image: gcr.io/kaniko-project/executor:debug
-  environment:
-    ACR_LOGIN_SERVER:
-      from_secret: ACR_LOGIN_SERVER
-    ACR_USERNAME:
-      from_secret: ACR_USERNAME
-    ACR_PASSWORD:
-      from_secret: ACR_PASSWORD
- 
-  commands:
-    - |
-      set -e
- 
-      mkdir -p /kaniko/.docker
- 
-      cat > /kaniko/.docker/config.json <<EOF
-      {
-        "auths": {
-          "https://$ACR_LOGIN_SERVER": {
-            "username": "$ACR_USERNAME",
-            "password": "$ACR_PASSWORD"
-          }
-        }
+      node <<'EOF'
+      const fs = require('fs')
+
+      let env = {}
+      let outputs = {}
+
+      if (process.env.DRONE_BRANCH === 'dev') {
+        outputs.environment = 'development'
+        outputs.environment_display = 'Dev'
+        outputs.release_repo = process.env.GHA_RELEASE_REPO_DEV
+        outputs.kustomize_folder = process.env.GHA_PROJECT_REPO_DEV
+        outputs.helm_folder = process.env.GHA_HELM_PROJECT_DEV
+        outputs.acr_name = `${process.env.GHA_REGISTRY_NAME_DEV}.${process.env.GHA_REGISTRY_DOMAIN}`
+        outputs.acr_username = process.env.ACR_USERNAME_DEV
+        outputs.acr_password = process.env.ACR_PASSWORD_DEV
+        outputs.docker_tag = `${outputs.acr_name}/${process.env.GHA_IMAGE_NAME}:${process.env.DRONE_COMMIT_SHA}`
+        outputs.helm_tag = process.env.DRONE_COMMIT_SHA
       }
+
+      else if (process.env.DRONE_TAG?.includes('-rc')) {
+        outputs.environment = 'staging'
+        outputs.environment_display = 'Staging'
+        outputs.release_repo = process.env.GHA_RELEASE_REPO_STG
+        outputs.kustomize_folder = process.env.GHA_PROJECT_REPO_STG
+        outputs.helm_folder = process.env.GHA_HELM_PROJECT_STG
+        outputs.acr_name = `${process.env.GHA_REGISTRY_NAME_STG}.${process.env.GHA_REGISTRY_DOMAIN}`
+        outputs.acr_username = process.env.ACR_USERNAME_STG
+        outputs.acr_password = process.env.ACR_PASSWORD_STG
+        outputs.docker_tag = `${outputs.acr_name}/${process.env.GHA_IMAGE_NAME}:${process.env.DRONE_TAG}`
+        outputs.helm_tag = process.env.DRONE_TAG
+      }
+
+      else if (process.env.DRONE_TAG?.includes('-avaxia')) {
+        outputs.environment = 'production'
+        outputs.environment_display = 'Production'
+        outputs.release_repo = process.env.GHA_RELEASE_REPO_PRD
+        outputs.kustomize_folder = process.env.GHA_PROJECT_REPO_PRD
+        outputs.helm_folder = process.env.GHA_HELM_PROJECT_PRD
+        outputs.acr_name = `${process.env.GHA_REGISTRY_NAME_PRD}.${process.env.GHA_REGISTRY_DOMAIN}`
+        outputs.acr_username = process.env.ACR_USERNAME_PRD
+        outputs.acr_password = process.env.ACR_PASSWORD_PRD
+        outputs.docker_tag = `${outputs.acr_name}/${process.env.GHA_IMAGE_NAME}:${process.env.DRONE_TAG}`
+        outputs.helm_tag = process.env.DRONE_TAG
+      }
+
+      fs.writeFileSync('.env', Object.entries(env).map(e => e.join('=')).join('\n'))
+      fs.writeFileSync('.outputs', Object.entries(outputs).map(e => e.join('=')).join('\n'))
       EOF
- 
-      . .env
- 
-      /kaniko/executor \
-        --context . \
-        --dockerfile Dockerfile \
-        --destination "$IMAGE" \
-        --cache=true \
-        --cache-repo "$(echo $IMAGE | cut -d: -f1)-cache"
+
 # -------------------------
-# Production Approval (TAG only)
+# Build & Push Docker
 # -------------------------
-- name: request-approval
-  image: python:3.11-alpine
-  when:
-    event:
-      - tag
-  environment:
-    EMAIL_PASSWORD:
-      from_secret: EMAIL_PASSWORD
+- name: docker-build-push
+  image: docker:24
+  volumes:
+    - name: dockersock
+      path: /var/run/docker.sock
   commands:
-    - python3 application-scripts/Pipelines/approval/approval-oneperson.py
- 
+    - source .outputs
+    - docker login $acr_name -u $acr_username -p $acr_password
+    - docker build -t $docker_tag $(cat .env | sed 's/^/--build-arg /') .
+    - docker push $docker_tag
+
 # -------------------------
-# Kustomize GitOps Release
+# Kustomize Release
 # -------------------------
 - name: kustomize-release
-  image: alpine/k8s:1.30.1
-  environment:
-    GITHUBTOKEN:
-      from_secret: GITHUBTOKEN
+  image: alpine/git
   commands:
-    - |
-      set -e
-      . .env
- 
-      git clone https://$GITHUBTOKEN@github.com/$RELEASE_REPO.git
-      cd $KUSTOMIZE_FOLDER
- 
-      kustomize edit set image app=$IMAGE
- 
-      git config user.name "drone-ci"
-      git config user.email "devops@avaxia-group.com"
- 
-      git commit -am "Release $IMAGE"
-      git push
+    - source .outputs
+    - git clone $release_repo repo
+    - cd repo/$kustomize_folder
+    - kustomize edit set image $docker_tag
+    - git commit -am "Deploy $environment $docker_tag"
+    - git push
+
+volumes:
+- name: dockersock
+  host:
+    path: /var/run/docker.sock
