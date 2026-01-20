@@ -3,73 +3,46 @@ type: kubernetes
 name: ci-pipeline
  
 trigger:
-  # event:
-  #   - push
-  #   - tag
-  #   - custom
   branch:
     - dev
-  # ref:
-  #   - refs/tags/v*
+  event:
+    - push
+    - tag
  
 steps:
- 
-# -------------------------
-# SonarQube Analysis
-# -------------------------
-# - name: sonarqube
-#   image: sonarsource/sonar-scanner-cli
-#   environment:
-#     SONAR_TOKEN:
-#       from_secret: SONAR_TOKEN
-#     SONAR_HOST_URL:
-#       from_secret: SONAR_HOST_URL
-#   commands:
-#     - sonar-scanner
  
 # -------------------------
 # Set Environment & .env
 # -------------------------
 - name: set-env
-  image: node:20-alpine
+  image: alpine:3.19
   environment:
     DRONE_BRANCH: ${DRONE_BRANCH}
     DRONE_TAG: ${DRONE_TAG}
     DRONE_COMMIT_SHA: ${DRONE_COMMIT_SHA}
  
-    # Global
-    GHA_IMAGE_NAME:
-      from_secret: GHA_IMAGE_NAME
- 
-    # Docker Hub
-    DOCKERHUB_USERNAME:
-      from_secret: DOCKERHUB_USERNAME
-    DOCKERHUB_PASSWORD:
-      from_secret: DOCKERHUB_PASSWORD
+    ACR_LOGIN_SERVER:
+      from_secret: ACR_LOGIN_SERVER
+    ACR_IMAGE_NAME:
+      from_secret: ACR_IMAGE_NAME
  
     # DEV
     GHA_RELEASE_REPO_DEV:
       from_secret: GHA_RELEASE_REPO_DEV
     GHA_PROJECT_REPO_DEV:
       from_secret: GHA_PROJECT_REPO_DEV
-    DOCKERHUB_NAMESPACE_DEV:
-      from_secret: DOCKERHUB_NAMESPACE_DEV
  
     # STG
     GHA_RELEASE_REPO_STG:
       from_secret: GHA_RELEASE_REPO_STG
     GHA_PROJECT_REPO_STG:
       from_secret: GHA_PROJECT_REPO_STG
-    DOCKERHUB_NAMESPACE_STG:
-      from_secret: DOCKERHUB_NAMESPACE_STG
  
     # PRD
     GHA_RELEASE_REPO_PRD:
       from_secret: GHA_RELEASE_REPO_PRD
     GHA_PROJECT_REPO_PRD:
       from_secret: GHA_PROJECT_REPO_PRD
-    DOCKERHUB_NAMESPACE_PRD:
-      from_secret: DOCKERHUB_NAMESPACE_PRD
  
   commands:
     - |
@@ -80,44 +53,48 @@ steps:
         TAG=$DRONE_COMMIT_SHA
         RELEASE_REPO=$GHA_RELEASE_REPO_DEV
         KUSTOMIZE_FOLDER=$GHA_PROJECT_REPO_DEV
-        DOCKER_NAMESPACE=$DOCKERHUB_NAMESPACE_DEV
  
       elif echo "$DRONE_TAG" | grep -q -- "-rc"; then
         ENV=staging
         TAG=$DRONE_TAG
         RELEASE_REPO=$GHA_RELEASE_REPO_STG
         KUSTOMIZE_FOLDER=$GHA_PROJECT_REPO_STG
-        DOCKER_NAMESPACE=$DOCKERHUB_NAMESPACE_STG
  
       elif echo "$DRONE_TAG" | grep -q -- "-avaxia"; then
         ENV=production
         TAG=$DRONE_TAG
         RELEASE_REPO=$GHA_RELEASE_REPO_PRD
         KUSTOMIZE_FOLDER=$GHA_PROJECT_REPO_PRD
-        DOCKER_NAMESPACE=$DOCKERHUB_NAMESPACE_PRD
  
       else
         echo "Unknown environment"
         exit 1
       fi
  
+      IMAGE="$ACR_LOGIN_SERVER/$ACR_IMAGE_NAME:$TAG"
+ 
       echo "ENV=$ENV" > .env
-      echo "DOCKER_IMAGE=$DOCKER_NAMESPACE/$GHA_IMAGE_NAME:$TAG" >> .env
+      echo "IMAGE=$IMAGE" >> .env
       echo "RELEASE_REPO=$RELEASE_REPO" >> .env
       echo "KUSTOMIZE_FOLDER=$KUSTOMIZE_FOLDER" >> .env
  
       cat .env
  
-# -------------------------
-# Docker Build & Push (Kaniko)
-# -------------------------
-- name: docker-build-push
-  image: gcr.io/kaniko-project/executor:latest
+# -------------------------------------------------
+# Build & Push to Azure Container Registry (Kaniko)
+# -------------------------------------------------
+- name: build-and-push-acr
+  image: gcr.io/kaniko-project/executor:v1.23.2
   environment:
-    DOCKERHUB_USERNAME:
-      from_secret: DOCKERHUB_USERNAME
-    DOCKERHUB_PASSWORD:
-      from_secret: DOCKERHUB_PASSWORD
+    ACR_LOGIN_SERVER:
+      from_secret: ACR_LOGIN_SERVER
+    ACR_USERNAME:
+      from_secret: ACR_USERNAME
+    ACR_PASSWORD:
+      from_secret: ACR_PASSWORD
+    ACR_IMAGE_NAME:
+      from_secret: ACR_IMAGE_NAME
+ 
   commands:
     - |
       set -e
@@ -127,9 +104,9 @@ steps:
       cat > /kaniko/.docker/config.json <<EOF
       {
         "auths": {
-          "https://index.docker.io/v1/": {
-            "username": "$DOCKERHUB_USERNAME",
-            "password": "$DOCKERHUB_PASSWORD"
+          "https://$ACR_LOGIN_SERVER": {
+            "username": "$ACR_USERNAME",
+            "password": "$ACR_PASSWORD"
           }
         }
       }
@@ -140,14 +117,15 @@ steps:
       /kaniko/executor \
         --context . \
         --dockerfile Dockerfile \
-        --destination $DOCKER_IMAGE \
-        --cache=true
+        --destination "$IMAGE" \
+        --cache=true \
+        --cache-repo "$ACR_LOGIN_SERVER/$ACR_IMAGE_NAME-cache"
  
 # -------------------------
 # Production Approval (TAG only)
 # -------------------------
 - name: request-approval
-  image: python:3.11
+  image: python:3.11-alpine
   when:
     event:
       - tag
@@ -173,10 +151,10 @@ steps:
       git clone https://$GITHUBTOKEN@github.com/$RELEASE_REPO.git
       cd $KUSTOMIZE_FOLDER
  
-      kustomize edit set image $DOCKER_IMAGE
+      kustomize edit set image app=$IMAGE
  
       git config user.name "drone-ci"
       git config user.email "devops@avaxia-group.com"
  
-      git commit -am "Release $DOCKER_IMAGE"
+      git commit -am "Release $IMAGE"
       git push
