@@ -129,7 +129,7 @@ steps:
 
       EOF
  
-      source .env
+      . .env
 
       export $(cut -d= -f1 .env)
  
@@ -139,12 +139,12 @@ steps:
 
         --dockerfile Dockerfile \
 
-        --destination "$DOCKER_IMAGE" \
+        --destination "$IMAGE" \
 
         --cache=true \
 
-        --cache-repo "$(echo $DOCKER_IMAGE | cut -d: -f1)-cache"
- 
+        --cache-repo "$(echo $IMAGE | cut -d: -f1)-cache"
+
  
 # -------------------------
 # Production Approval (TAG only)
