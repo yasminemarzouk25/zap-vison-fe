@@ -129,15 +129,14 @@ steps:
 # -------------------------
 # Build & Push Docker (Kaniko)
 # -------------------------
-
 - name: docker-build-push
   image: gcr.io/kaniko-project/executor:latest
   environment:
     DOCKER_CONFIG: /kaniko/.docker
   commands:
     - |
-      set -e
-      . .outputs
+      ls -la
+      cat .outputs
  
       mkdir -p /kaniko/.docker
  
@@ -156,8 +155,7 @@ steps:
         --context . \
         --dockerfile Dockerfile \
         --destination "$docker_tag"
-
-
+ 
 # -------------------------
 # Kustomize Release
 # -------------------------
