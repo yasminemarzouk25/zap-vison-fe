@@ -185,23 +185,17 @@ steps:
     GITHUBTOKEN:
       from_secret: GITHUBTOKEN
   commands:
-    # Save the token BEFORE loading outputs
-    - TOKEN="$GITHUBTOKEN"
     - export $(cat .outputs | xargs)
-    # Restore the token after loading outputs
-    - export GITHUBTOKEN="$TOKEN"
-    
     - git config --global user.name "yasminemarzouk"
     - git config --global user.email "marzouk.yasmine@esprit.tn"
     - git config --global --add safe.directory '*'
-    
-    - echo "TOKEN_LENGTH=${#GITHUBTOKEN}"
-    
-    # Use release_repo from .outputs
+
+    - echo "TOKEN_LENGTH=${#GITHUBTOKEN}"   # just to verify it’s there
     - git clone https://x-access-token:${GITHUBTOKEN}@github.com/${release_repo}.git repo
     
     - cd repo/$kustomize_folder
     - kustomize edit set image $docker_tag
     - git commit -am "Deploy $environment $docker_tag"
-    
+
     - git push https://x-access-token:${GITHUBTOKEN}@github.com/${release_repo}.git
+
