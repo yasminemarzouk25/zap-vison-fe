@@ -3,11 +3,11 @@ type: kubernetes
 name: ci-pipeline
 
 trigger:
-  event:
-    - push
+  # event:
+  #   - push
   branch:
     - dev
-    
+
 steps:
 
 # -------------------------
