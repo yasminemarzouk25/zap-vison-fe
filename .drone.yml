@@ -180,21 +180,31 @@ steps:
 # Kustomize Release
 # -------------------------
 - name: kustomize-release
-  image: k8s.gcr.io/kustomize/kustomize:v5.3.0
+  image: alpine:3.18
   environment:
     GITHUBTOKEN:
       from_secret: GITHUBTOKEN
   commands:
+  
+    - apk add --no-cache git curl
+    - curl -sLo /usr/local/bin/kustomize https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v5.3.0/kustomize_v5.3.0_linux_amd64
+    - chmod +x /usr/local/bin/kustomize
+
     - export $(cat .outputs | xargs)
+
+    - echo "TOKEN_LENGTH=${#GITHUBTOKEN}"
+    - echo "REPO=${release_repo}"
+
     - git config --global user.name "yasminemarzouk"
     - git config --global user.email "marzouk.yasmine@esprit.tn"
     - git config --global --add safe.directory '*'
 
-    - echo "TOKEN_LENGTH=${#GITHUBTOKEN}"  
     - git clone https://x-access-token:${GITHUBTOKEN}@github.com/${release_repo}.git repo
-    
     - cd repo/$kustomize_folder
-    - kustomize edit set image $docker_tag
-    - git commit -am "Deploy $environment $docker_tag"
 
-    - git push https://x-access-token:${GITHUBTOKEN}@github.com/${release_repo}.git
+    
+    - kustomize edit set image $docker_tag
+
+  
+    - git commit -am "Deploy $environment $docker_tag" || echo "No changes to commit"
+    - git push https://x-access-token:${GITHUBTOKEN}@github.com/${release_repo}.git HEAD:main
