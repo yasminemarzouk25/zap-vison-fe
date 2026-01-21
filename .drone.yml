@@ -187,6 +187,8 @@ steps:
   commands:
     - export $(cat .outputs | xargs)
     - echo https://${GITHUBTOKEN}@github.com/${release_repo}.git
+    - echo "GITHUBTOKEN=[$GITHUBTOKEN]"
+    - echo "release_repo=[$release_repo]"
     - git clone https://${GITHUBTOKEN}@github.com/${release_repo}.git repo
     - cd repo/$kustomize_folder
     - kustomize edit set image $docker_tag
