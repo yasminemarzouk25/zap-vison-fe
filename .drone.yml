@@ -151,10 +151,7 @@ steps:
       }
       EOF
  
-    - /kaniko/executor \
-        --context . \
-        --dockerfile Dockerfile \
-        --destination "$docker_tag"
+    - /kaniko/executor --context . --dockerfile Dockerfile --destination "$docker_tag"
 # -------------------------
 # Kustomize Release
 # -------------------------
