@@ -120,14 +120,12 @@ steps:
         process.exit(1);
       }
 
-      fs.writeFileSync('.env', Object.entries(env).map(e => e.join('=')).join(String.fromCharCode(10)));
-      fs.writeFileSync(
-        '.outputs',
-        Object.entries(outputs)
-          .map(([k, v]) => `export ${k}="${v}"`)
-          .join('\n')
-      );
+      const content = Object.entries(outputs)
+      .map(([k, v]) => `export ${k}=\"${v}\"`)
+      .join('\n');
 
+      fs.writeFileSync('.outputs', content);
+      console.log('Generated .outputs:\\n' + content);
 
 
       "
