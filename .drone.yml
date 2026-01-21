@@ -190,7 +190,7 @@ steps:
     - git config --global user.email "marzouk.yasmine@esprit.tn"
     - git config --global --add safe.directory '*'
 
-    - echo "TOKEN_LENGTH=${#GITHUBTOKEN}"   # just to verify it’s there
+    - echo "TOKEN_LENGTH=${#GITHUBTOKEN}"  
     - git clone https://x-access-token:${GITHUBTOKEN}@github.com/${release_repo}.git repo
     
     - cd repo/$kustomize_folder
