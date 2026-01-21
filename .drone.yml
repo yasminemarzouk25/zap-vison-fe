@@ -140,6 +140,7 @@ steps:
   commands:
 
     - cat .outputs
+    - . .outputs
     - mkdir -p /kaniko/.docker
     - |
 
