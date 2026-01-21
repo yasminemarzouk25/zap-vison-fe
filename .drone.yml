@@ -76,14 +76,13 @@ steps:
       from_secret: ACR_PASSWORD_PRD
 
   commands:
-    - |
-      cat > set-env.js <<'EOF'
+    - >
+      node -e "
       const fs = require('fs');
       const env = process.env;
-      const outputs = {};
+      let outputs = {};
 
       if (env.DRONE_BRANCH === 'dev') {
-        // ---------- DEV ----------
         outputs.environment = 'development';
         outputs.environment_display = 'Dev';
         outputs.release_repo = env.GHA_RELEASE_REPO_DEV;
@@ -92,12 +91,9 @@ steps:
         outputs.acr_name = env.ACR_USERNAME_DEV + '.' + env.GHA_REGISTRY_DOMAIN;
         outputs.acr_username = env.ACR_USERNAME_DEV;
         outputs.acr_password = env.ACR_PASSWORD_DEV;
-        outputs.docker_tag =
-          outputs.acr_name + '/' + env.GHA_IMAGE_NAME + ':' + env.DRONE_COMMIT_SHA;
+        outputs.docker_tag = outputs.acr_name + '/' + env.GHA_IMAGE_NAME + ':' + env.DRONE_COMMIT_SHA;
         outputs.helm_tag = env.DRONE_COMMIT_SHA;
-
       } else if (env.DRONE_TAG && env.DRONE_TAG.includes('-rc')) {
-        // ---------- STAGING ----------
         outputs.environment = 'staging';
         outputs.environment_display = 'Staging';
         outputs.release_repo = env.GHA_RELEASE_REPO_STG;
@@ -106,12 +102,9 @@ steps:
         outputs.acr_name = env.GHA_REGISTRY_NAME_STG + '.' + env.GHA_REGISTRY_DOMAIN;
         outputs.acr_username = env.ACR_USERNAME_STG;
         outputs.acr_password = env.ACR_PASSWORD_STG;
-        outputs.docker_tag =
-          outputs.acr_name + '/' + env.GHA_IMAGE_NAME + ':' + env.DRONE_TAG;
+        outputs.docker_tag = outputs.acr_name + '/' + env.GHA_IMAGE_NAME + ':' + env.DRONE_TAG;
         outputs.helm_tag = env.DRONE_TAG;
-
       } else if (env.DRONE_TAG && env.DRONE_TAG.includes('-avaxia')) {
-        // ---------- PRODUCTION ----------
         outputs.environment = 'production';
         outputs.environment_display = 'Production';
         outputs.release_repo = env.GHA_RELEASE_REPO_PRD;
@@ -120,24 +113,18 @@ steps:
         outputs.acr_name = env.GHA_REGISTRY_NAME_PRD + '.' + env.GHA_REGISTRY_DOMAIN;
         outputs.acr_username = env.ACR_USERNAME_PRD;
         outputs.acr_password = env.ACR_PASSWORD_PRD;
-        outputs.docker_tag =
-          outputs.acr_name + '/' + env.GHA_IMAGE_NAME + ':' + env.DRONE_TAG;
+        outputs.docker_tag = outputs.acr_name + '/' + env.GHA_IMAGE_NAME + ':' + env.DRONE_TAG;
         outputs.helm_tag = env.DRONE_TAG;
-
       } else {
-        console.error('Unknown environment context');
+        console.error('Unknown environment');
         process.exit(1);
       }
 
-      const content = Object.entries(outputs)
-        .map(([k, v]) => `export ${k}="${v}"`)
-        .join('\n');
+      fs.writeFileSync('.env', Object.entries(env).map(e => e.join('=')).join(String.fromCharCode(10)));
+      fs.writeFileSync('.outputs', Object.entries(outputs).map(e => e.join('=')).join(String.fromCharCode(10)));
 
-      fs.writeFileSync('.outputs', content);
-      console.log('Generated .outputs:\\n' + content);
-      EOF
 
-    - node set-env.js
+      "
 
 # -------------------------
 # Build & Push Docker (Kaniko)
@@ -152,7 +139,7 @@ steps:
 
   commands:
 
-    - . ./.outputs
+    - export $(cat .outputs | xargs)
 
     - echo "DESTINATION=$docker_tag"
 
@@ -193,27 +180,37 @@ steps:
 # Kustomize Release
 # -------------------------
 - name: kustomize-release
-  image: k8s.gcr.io/kustomize/kustomize:v5.3.0
+  image: alpine/git
   environment:
     GITHUBTOKEN:
       from_secret: GITHUBTOKEN
   commands:
-    - . ./.outputs
+    - set -e
+
+   
+    - export $(cat .outputs | xargs)
+
+    # hard validation
+    - |
+      if [ -z "$GITHUBTOKEN" ]; then
+        echo " GITHUBTOKEN is empty"
+        exit 1
+      fi
+
+      if [ -z "$release_repo" ]; then
+        echo "release_repo is empty"
+        exit 1
+      fi
 
     - git config --global user.name "yasminemarzouk"
     - git config --global user.email "marzouk.yasmine@esprit.tn"
     - git config --global --add safe.directory '*'
 
-    - export GH_AUTH=$(printf "x-access-token:%s" "$GITHUBTOKEN" | base64)
-    - git config --global http.https://github.com/.extraheader "AUTHORIZATION:basic $GH_AUTH"
-
-    - git ls-remote https://github.com/${release_repo}.git
-
-    - git clone https://github.com/${release_repo}.git repo
+    - git clone https://x-access-token:${GITHUBTOKEN}@github.com/${release_repo}.git repo
     - cd repo/$kustomize_folder
 
     - kustomize edit set image $docker_tag
+
     - git commit -am "Deploy $environment $docker_tag" || echo "No changes"
 
-    - git push origin HEAD
-
+    - git push https://x-access-token:${GITHUBTOKEN}@github.com/${release_repo}.git HEAD:main
