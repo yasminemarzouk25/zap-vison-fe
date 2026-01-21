@@ -182,11 +182,11 @@ steps:
 - name: kustomize-release
   image: k8s.gcr.io/kustomize/kustomize:v5.3.0
   environment:
-    GITHUB_TOKEN:
-      from_secret: GITHUB_TOKEN
+    GITHUBTOKEN:
+      from_secret: GITHUBTOKEN
   commands:
     - export $(cat .outputs | xargs)
-    - git clone https://x-access-token:${GITHUB_TOKEN}@github.com/${release_repo}.git repo
+    - git clone https://${GITHUBTOKEN}@github.com/${release_repo}.git repo
     - cd repo/$kustomize_folder
     - kustomize edit set image $docker_tag
     - git commit -am "Deploy $environment $docker_tag"
