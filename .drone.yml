@@ -180,11 +180,20 @@ steps:
 # Kustomize Release
 # -------------------------
 - name: kustomize-release
-  image: bitnami/kubectl:latest
+
+  image: k8s.gcr.io/kustomize/kustomize:v5.3.0
+
   commands:
+
     - export $(cat .outputs | xargs)
+
     - git clone $release_repo repo
+
     - cd repo/$kustomize_folder
+
     - kustomize edit set image $docker_tag
+
     - git commit -am "Deploy $environment $docker_tag"
+
     - git push
+ 
