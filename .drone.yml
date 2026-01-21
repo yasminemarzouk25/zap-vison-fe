@@ -180,28 +180,18 @@ steps:
 # Kustomize Release
 # -------------------------
 - name: kustomize-release
-  image: alpine/k8s:1.27.3
+
+  image: k8s.gcr.io/kustomize/kustomize:v5.3.0
   environment:
     GITHUBTOKEN:
       from_secret: GITHUBTOKEN
   commands:
-    # Strict mode so we fail early
-    - set -euo pipefail
 
-    # Load outputs SAFELY
-    - |
-      while IFS='=' read -r key value; do
-        export "$key=$value"
-      done < .outputs
-
-    - echo "release_repo=[$release_repo]"
-
+    - export $(cat .outputs | xargs)
+    - git ls-remote https://x-access-token:${GITHUBTOKEN}@github.com/${release_repo}.git
     - git clone https://x-access-token:${GITHUBTOKEN}@github.com/${release_repo}.git repo
-
     - cd repo/$kustomize_folder
-
     - kustomize edit set image $docker_tag
-
-    - git commit -am "Deploy $environment $docker_tag" || echo "No changes to commit"
-
+    - git commit -am "Deploy $environment $docker_tag"
     - git push
+ 
