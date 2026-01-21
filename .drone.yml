@@ -130,16 +130,16 @@ steps:
 # Build & Push Docker (Kaniko)
 # -------------------------
 - name: docker-build-push
-  image: gcr.io/kaniko-project/executor:latest
+  image: gcr.io/kaniko-project/executor:debug
   environment:
     DOCKER_CONFIG: /kaniko/.docker
   commands:
+    - ls -la
+    - cat .outputs
+ 
+    - mkdir -p /kaniko/.docker
+ 
     - |
-      ls -la
-      cat .outputs
- 
-      mkdir -p /kaniko/.docker
- 
       cat <<EOF > /kaniko/.docker/config.json
       {
         "auths": {
@@ -151,11 +151,10 @@ steps:
       }
       EOF
  
-      /kaniko/executor \
+    - /kaniko/executor \
         --context . \
         --dockerfile Dockerfile \
         --destination "$docker_tag"
- 
 # -------------------------
 # Kustomize Release
 # -------------------------
