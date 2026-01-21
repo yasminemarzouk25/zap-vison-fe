@@ -88,7 +88,7 @@ steps:
         outputs.release_repo = env.GHA_RELEASE_REPO_DEV;
         outputs.kustomize_folder = env.GHA_PROJECT_REPO_DEV;
         outputs.helm_folder = env.GHA_HELM_PROJECT_DEV;
-        outputs.acr_name = env.ACR_USERNAME_DEV + '.' + env.ACR_LOGIN_SERVER;
+        outputs.acr_name = env.ACR_USERNAME_DEV + '.' + env.GHA_REGISTRY_DOMAIN;
         outputs.acr_username = env.ACR_USERNAME_DEV;
         outputs.acr_password = env.ACR_PASSWORD_DEV;
         outputs.docker_tag = outputs.acr_name + '/' + env.GHA_IMAGE_NAME + ':' + env.DRONE_COMMIT_SHA;
