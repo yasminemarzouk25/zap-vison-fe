@@ -186,6 +186,7 @@ steps:
       from_secret: GITHUBTOKEN
   commands:
     - export $(cat .outputs | xargs)
+    - echo https://${GITHUBTOKEN}@github.com/${release_repo}.git
     - git clone https://${GITHUBTOKEN}@github.com/${release_repo}.git repo
     - cd repo/$kustomize_folder
     - kustomize edit set image $docker_tag
