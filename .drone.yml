@@ -130,7 +130,7 @@ steps:
 # Build & Push Docker (Kaniko)
 # -------------------------
 - name: docker-build-push
-  image: gcr.io/kaniko-project/executor:debug
+  image: gcr.io/kaniko-project/executor:latest
   environment:
     DOCKER_CONFIG: /kaniko/.docker
   commands:
