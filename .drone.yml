@@ -131,7 +131,7 @@ steps:
 # -------------------------
 - name: docker-build-push
 
-  image: gcr.io/kaniko-project/executor:latest
+  image: omio/gcr.io.kaniko-project.executor:debug-v1.6.0
 
   environment:
 
