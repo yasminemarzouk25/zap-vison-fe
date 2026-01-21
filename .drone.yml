@@ -12,10 +12,10 @@ trigger:
     - v[0-9]+.[0-9]+.[0-9]+
     - v[0-9]+.[0-9]+.[0-9]+-avaxia*
     - v[0-9]+.[0-9]+.[0-9]+-rc*
-    
+
 steps:
 
-# SonarQube
+# SonarQube#
 
 # - name: sonarqube
 #   image: sonarsource/sonar-scanner-cli
