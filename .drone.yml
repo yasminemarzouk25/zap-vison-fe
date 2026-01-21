@@ -189,6 +189,7 @@ steps:
 
     - export $(cat .outputs | xargs)
     - git ls-remote https://x-access-token:${GITHUBTOKEN}@github.com/${release_repo}.git
+    - echo "TOKEN_LENGTH=${#GITHUBTOKEN}"
     - git clone https://x-access-token:${GITHUBTOKEN}@github.com/${release_repo}.git repo
     - cd repo/$kustomize_folder
     - kustomize edit set image $docker_tag
