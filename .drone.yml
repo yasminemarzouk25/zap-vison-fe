@@ -198,4 +198,3 @@ steps:
     - git commit -am "Deploy $environment $docker_tag"
 
     - git push https://x-access-token:${GITHUBTOKEN}@github.com/${release_repo}.git
-
