@@ -188,4 +188,3 @@ steps:
     - kustomize edit set image $docker_tag
     - git commit -am "Deploy $environment $docker_tag"
     - git push
- 
