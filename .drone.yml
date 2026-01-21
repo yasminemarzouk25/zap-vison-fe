@@ -179,29 +179,29 @@ steps:
 # -------------------------
 # Kustomize Release
 # -------------------------
-# -------------------------
-# Kustomize Release
-# -------------------------
 - name: kustomize-release
   image: k8s.gcr.io/kustomize/kustomize:v5.3.0
   environment:
     GITHUBTOKEN:
       from_secret: GITHUBTOKEN
   commands:
+    # Save the token BEFORE loading outputs
+    - TOKEN="$GITHUBTOKEN"
     - export $(cat .outputs | xargs)
+    # Restore the token after loading outputs
+    - export GITHUBTOKEN="$TOKEN"
+    
     - git config --global user.name "yasminemarzouk"
     - git config --global user.email "marzouk.yasmine@esprit.tn"
     - git config --global --add safe.directory '*'
     
-  
     - echo "TOKEN_LENGTH=${#GITHUBTOKEN}"
     
-    
-    - git clone https://x-access-token:${GITHUBTOKEN}@github.com/yasminemarzouk25/elasticsearch-kibana.git repo
+    # Use release_repo from .outputs
+    - git clone https://x-access-token:${GITHUBTOKEN}@github.com/${release_repo}.git repo
     
     - cd repo/$kustomize_folder
     - kustomize edit set image $docker_tag
     - git commit -am "Deploy $environment $docker_tag"
     
-   
-    - git push https://x-access-token:${GITHUBTOKEN}@github.com/yasminemarzouk25/elasticsearch-kibana.}@github.com/${release_repo}.git
+    - git push https://x-access-token:${GITHUBTOKEN}@github.com/${release_repo}.git
