@@ -76,13 +76,14 @@ steps:
       from_secret: ACR_PASSWORD_PRD
 
   commands:
-    - >
-      node -e "
+    - |
+      cat > set-env.js <<'EOF'
       const fs = require('fs');
       const env = process.env;
-      let outputs = {};
+      const outputs = {};
 
       if (env.DRONE_BRANCH === 'dev') {
+        // ---------- DEV ----------
         outputs.environment = 'development';
         outputs.environment_display = 'Dev';
         outputs.release_repo = env.GHA_RELEASE_REPO_DEV;
@@ -91,9 +92,12 @@ steps:
         outputs.acr_name = env.ACR_USERNAME_DEV + '.' + env.GHA_REGISTRY_DOMAIN;
         outputs.acr_username = env.ACR_USERNAME_DEV;
         outputs.acr_password = env.ACR_PASSWORD_DEV;
-        outputs.docker_tag = outputs.acr_name + '/' + env.GHA_IMAGE_NAME + ':' + env.DRONE_COMMIT_SHA;
+        outputs.docker_tag =
+          outputs.acr_name + '/' + env.GHA_IMAGE_NAME + ':' + env.DRONE_COMMIT_SHA;
         outputs.helm_tag = env.DRONE_COMMIT_SHA;
+
       } else if (env.DRONE_TAG && env.DRONE_TAG.includes('-rc')) {
+        // ---------- STAGING ----------
         outputs.environment = 'staging';
         outputs.environment_display = 'Staging';
         outputs.release_repo = env.GHA_RELEASE_REPO_STG;
@@ -102,9 +106,12 @@ steps:
         outputs.acr_name = env.GHA_REGISTRY_NAME_STG + '.' + env.GHA_REGISTRY_DOMAIN;
         outputs.acr_username = env.ACR_USERNAME_STG;
         outputs.acr_password = env.ACR_PASSWORD_STG;
-        outputs.docker_tag = outputs.acr_name + '/' + env.GHA_IMAGE_NAME + ':' + env.DRONE_TAG;
+        outputs.docker_tag =
+          outputs.acr_name + '/' + env.GHA_IMAGE_NAME + ':' + env.DRONE_TAG;
         outputs.helm_tag = env.DRONE_TAG;
+
       } else if (env.DRONE_TAG && env.DRONE_TAG.includes('-avaxia')) {
+        // ---------- PRODUCTION ----------
         outputs.environment = 'production';
         outputs.environment_display = 'Production';
         outputs.release_repo = env.GHA_RELEASE_REPO_PRD;
@@ -113,22 +120,24 @@ steps:
         outputs.acr_name = env.GHA_REGISTRY_NAME_PRD + '.' + env.GHA_REGISTRY_DOMAIN;
         outputs.acr_username = env.ACR_USERNAME_PRD;
         outputs.acr_password = env.ACR_PASSWORD_PRD;
-        outputs.docker_tag = outputs.acr_name + '/' + env.GHA_IMAGE_NAME + ':' + env.DRONE_TAG;
+        outputs.docker_tag =
+          outputs.acr_name + '/' + env.GHA_IMAGE_NAME + ':' + env.DRONE_TAG;
         outputs.helm_tag = env.DRONE_TAG;
+
       } else {
-        console.error('Unknown environment');
+        console.error('Unknown environment context');
         process.exit(1);
       }
 
       const content = Object.entries(outputs)
-      .map(([k, v]) => `export ${k}=\"${v}\"`)
-      .join('\n');
+        .map(([k, v]) => `export ${k}="${v}"`)
+        .join('\n');
 
       fs.writeFileSync('.outputs', content);
       console.log('Generated .outputs:\\n' + content);
+      EOF
 
-
-      "
+    - node set-env.js
 
 # -------------------------
 # Build & Push Docker (Kaniko)
