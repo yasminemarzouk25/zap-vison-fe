@@ -16,4 +16,4 @@ COPY --from=builder /app/dist  /usr/share/nginx/html
 ENTRYPOINT [ "nginx" , "-g" , "daemon off;" ]
 EXPOSE 5173
 
-#
+
