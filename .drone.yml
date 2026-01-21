@@ -121,7 +121,13 @@ steps:
       }
 
       fs.writeFileSync('.env', Object.entries(env).map(e => e.join('=')).join(String.fromCharCode(10)));
-      fs.writeFileSync('.outputs', Object.entries(outputs).map(e => e.join('=')).join(String.fromCharCode(10)));
+      fs.writeFileSync(
+        '.outputs',
+        Object.entries(outputs)
+          .map(([k, v]) => `export ${k}="${v}"`)
+          .join('\n')
+      );
+
 
 
       "
@@ -139,7 +145,7 @@ steps:
 
   commands:
 
-    - export $(cat .outputs | xargs)
+    - . ./.outputs
 
     - echo "DESTINATION=$docker_tag"
 
@@ -180,31 +186,27 @@ steps:
 # Kustomize Release
 # -------------------------
 - name: kustomize-release
-  image: alpine:3.18
+  image: k8s.gcr.io/kustomize/kustomize:v5.3.0
   environment:
     GITHUBTOKEN:
       from_secret: GITHUBTOKEN
   commands:
-  
-    - apk add --no-cache git curl
-    - curl -sLo /usr/local/bin/kustomize https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v5.3.0/kustomize_v5.3.0_linux_amd64
-    - chmod +x /usr/local/bin/kustomize
-
-    - export $(cat .outputs | xargs)
-
-    - echo "TOKEN_LENGTH=${#GITHUBTOKEN}"
-    - echo "REPO=${release_repo}"
+    - . ./.outputs
 
     - git config --global user.name "yasminemarzouk"
     - git config --global user.email "marzouk.yasmine@esprit.tn"
     - git config --global --add safe.directory '*'
 
-    - git clone https://x-access-token:${GITHUBTOKEN}@github.com/${release_repo}.git repo
+    - export GH_AUTH=$(printf "x-access-token:%s" "$GITHUBTOKEN" | base64)
+    - git config --global http.https://github.com/.extraheader "AUTHORIZATION:basic $GH_AUTH"
+
+    - git ls-remote https://github.com/${release_repo}.git
+
+    - git clone https://github.com/${release_repo}.git repo
     - cd repo/$kustomize_folder
 
-    
     - kustomize edit set image $docker_tag
+    - git commit -am "Deploy $environment $docker_tag" || echo "No changes"
 
-  
-    - git commit -am "Deploy $environment $docker_tag" || echo "No changes to commit"
-    - git push https://x-access-token:${GITHUBTOKEN}@github.com/${release_repo}.git HEAD:main
+    - git push origin HEAD
+
