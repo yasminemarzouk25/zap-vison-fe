@@ -136,6 +136,7 @@ steps:
   commands:
     - ls -la
     - cat .outputs
+    - . .outputs
  
     - mkdir -p /kaniko/.docker
  
