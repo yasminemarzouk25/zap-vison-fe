@@ -208,7 +208,7 @@ steps:
 # Kustomize Release
 
 - name: kustomize-release
-  image: bitnami/kubectl:1.30.0
+  image: cloudowski/drone-kustomize:latest
   # when:
   #   status:
   #     - success
