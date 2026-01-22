@@ -215,7 +215,7 @@ steps:
 # Kustomize Release
 
 - name: kustomize-release
-  image: cloudowski/drone-kustomize:latest
+  image: alpine:3.18
   # when:
   #   status:
   #     - success
