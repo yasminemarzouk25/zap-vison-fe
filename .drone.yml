@@ -181,16 +181,17 @@ steps:
 # -------------------------
 - name: kustomize-release
   image: cloudowski/drone-kustomize
-  when:
-    event:
-      - push
   environment:
     GITHUBTOKEN:
       from_secret: GITHUBTOKEN
   commands:
     - export $(cat .outputs | xargs)
-    - git ls-remote https://x-access-token:${GITHUBTOKEN}@github.com/${release_repo}.git
-    - git clone https://x-access-token:${GITHUBTOKEN}@github.com/${release_repo}.git repo
+    - git config --global user.name "yasminemarzouk"
+    - git config --global user.email "marzouk.yasmine@esprit.tn"
+    - git config --global --add safe.directory '*'
+    - git ls-remote https://github.com/yasminemarzouk25/elasticsearch-kibana.git
+    - echo "TOKEN_LENGTH=${#GITHUBTOKEN}"
+    - git clone https://github.com/yasminemarzouk25/elasticsearch-kibana.git repo
     - cd repo/$kustomize_folder
     - kustomize edit set image $docker_tag
     - git commit -am "Deploy $environment $docker_tag"
