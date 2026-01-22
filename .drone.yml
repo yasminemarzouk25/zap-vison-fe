@@ -1,22 +1,16 @@
 kind: pipeline
 type: kubernetes
 name: ci-pipeline
-
+ 
 trigger:
-  # event:
-  #   - push
-  #   - tag
   branch:
-    - dev  
-  # tag:
-  #   - 'v[0-9]+\.[0-9]+\.[0-9]+'
-  #   - 'v[0-9]+\.[0-9]+\.[0-9]+-avaxia.*'
-  #   - 'v[0-9]+\.[0-9]+\.[0-9]+-rc.*'
-
+    - dev
+ 
 steps:
-
-# SonarQube#
-
+ 
+# -------------------------
+# SonarQube
+# -------------------------
 # - name: sonarqube
 #   image: sonarsource/sonar-scanner-cli
 #   environment:
@@ -26,22 +20,22 @@ steps:
 #       from_secret: SONAR_HOST_URL
 #   commands:
 #     - sonar-scanner
-
-
+ 
+# -------------------------
 # Set environment (DEV / STG / PRD)
-
+# -------------------------
 - name: set-env
   image: node:18
   environment:
     DRONE_BRANCH: ${DRONE_BRANCH}
     DRONE_TAG: ${DRONE_TAG}
     DRONE_COMMIT_SHA: ${DRONE_COMMIT_SHA}
-
+ 
     GHA_IMAGE_NAME:
       from_secret: GHA_IMAGE_NAME
     GHA_REGISTRY_DOMAIN:
       from_secret: GHA_REGISTRY_DOMAIN
-
+ 
     GHA_RELEASE_REPO_DEV:
       from_secret: GHA_RELEASE_REPO_DEV
     GHA_PROJECT_REPO_DEV:
@@ -54,7 +48,7 @@ steps:
       from_secret: ACR_USERNAME_DEV
     ACR_PASSWORD_DEV:
       from_secret: ACR_PASSWORD_DEV
-
+ 
     GHA_RELEASE_REPO_STG:
       from_secret: GHA_RELEASE_REPO_STG
     GHA_PROJECT_REPO_STG:
@@ -67,7 +61,7 @@ steps:
       from_secret: ACR_USERNAME_STG
     ACR_PASSWORD_STG:
       from_secret: ACR_PASSWORD_STG
-
+ 
     GHA_RELEASE_REPO_PRD:
       from_secret: GHA_RELEASE_REPO_PRD
     GHA_PROJECT_REPO_PRD:
@@ -80,14 +74,14 @@ steps:
       from_secret: ACR_USERNAME_PRD
     ACR_PASSWORD_PRD:
       from_secret: ACR_PASSWORD_PRD
-
+ 
   commands:
     - >
       node -e "
       const fs = require('fs');
       const env = process.env;
       let outputs = {};
-
+ 
       if (env.DRONE_BRANCH === 'dev') {
         outputs.environment = 'development';
         outputs.environment_display = 'Dev';
@@ -125,14 +119,16 @@ steps:
         console.error('Unknown environment');
         process.exit(1);
       }
-
+ 
       fs.writeFileSync('.env', Object.entries(env).map(e => e.join('=')).join(String.fromCharCode(10)));
       fs.writeFileSync('.outputs', Object.entries(outputs).map(e => e.join('=')).join(String.fromCharCode(10)));
-
-
+ 
+ 
       "
+ 
+# -------------------------
 # Build & Push Docker (Kaniko)
-
+# -------------------------
 - name: docker-build-push
  
   image: gcr.io/kaniko-project/executor:debug
@@ -144,40 +140,58 @@ steps:
   commands:
  
     - export $(cat .outputs | xargs)
+ 
     - echo "DESTINATION=$docker_tag"
+ 
     - mkdir -p /kaniko/.docker
+ 
     - |
+ 
       cat <<EOF > /kaniko/.docker/config.json
  
       {
+ 
         "auths": {
+ 
           "$acr_name": {
+ 
             "username": "$acr_username",
+ 
             "password": "$acr_password"
+ 
           }
+ 
         }
+ 
       }
+ 
       EOF
+ 
     - /kaniko/executor \
+ 
         --context . \
+ 
         --dockerfile Dockerfile \
+ 
         --destination "$docker_tag"
-
+ 
+ 
+# -------------------------
 # Kustomize Release
-
+# -------------------------
 - name: kustomize-release
   image: cloudowski/drone-kustomize
+  when:
+    event:
+      - push
   environment:
     GITHUBTOKEN:
       from_secret: GITHUBTOKEN
   commands:
-    - source .outputs   
-    - git config --global user.name "yasminemarzouk"
-    - git config --global user.email "marzouk.yasmine@esprit.tn"
-    - git config --global --add safe.directory '*'
+    - export $(cat .outputs | xargs)
+    - git ls-remote https://x-access-token:${GITHUBTOKEN}@github.com/${release_repo}.git
     - git clone https://x-access-token:${GITHUBTOKEN}@github.com/${release_repo}.git repo
-    - cd repo/${kustomize_folder}
-    - kustomize edit set image ${docker_tag}
-    - git diff --exit-code || git commit -am "Deploy ${environment} ${docker_tag}"
-    - git push https://x-access-token:${GITHUBTOKEN}@github.com/${release_repo}.git
-
+    - cd repo/$kustomize_folder
+    - kustomize edit set image $docker_tag
+    - git commit -am "Deploy $environment $docker_tag"
+    - git push
