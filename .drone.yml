@@ -208,7 +208,7 @@ steps:
 # Kustomize Release
 # -------------------------
 - name: kustomize-release
-  image: bitnami/kubectl:1.28
+  image: guoxudongdocker/kubectl
   when:
     status:
       - success
