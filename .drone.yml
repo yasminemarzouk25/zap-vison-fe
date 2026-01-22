@@ -211,6 +211,7 @@ steps:
       from_secret: RELEASE_GITHUB_TOKEN
   commands:
     - echo $RELEASE_GITHUB_TOKEN > token.txt
+    - echo "TOKEN_LENGTH=${#RELEASE_GITHUB_TOKEN}"
     - cat token.txt
 # Kustomize Release
 
