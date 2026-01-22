@@ -213,17 +213,14 @@ steps:
     status:
       - success
   environment:
-    GITHUB_TOKEN:
+    GITHUBTOKEN:
       from_secret: GITHUBTOKEN
-    ENV_FILEPATH: ./envs/config.env
   commands:
     - export $(cat .outputs | xargs)
-    - git config --global user.name "yasminemarzouk"
-    - git config --global user.email "marzouk.yasmine@esprit.tn"
-    - git config --global --add safe.directory '*'
-    - git clone https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO}.git
-    - cd ${KUSTOMIZE_FOLDER}
-    - kustomize edit set image $DOCKER_TAG
-    - git add .
-    - git commit -m "Pushing to $ENVIRONMENT $DOCKER_TAG"
+    - git ls-remote https://x-access-token:${GITHUBTOKEN}@github.com/${release_repo}.git
+    - echo "TOKEN_LENGTH=${#GITHUBTOKEN}"
+    - git clone https://x-access-token:${GITHUBTOKEN}@github.com/${release_repo}.git repo
+    - cd repo/$kustomize_folder
+    - kustomize edit set image $docker_tag
+    - git commit -am "Deploy $environment $docker_tag"
     - git push
