@@ -221,11 +221,11 @@ steps:
   - set +a
 
   - echo "release_repo=$release_repo"
-  - echo "TOKEN_LENGTH=${#GITHUBTOKEN}"
+  - echo "TOKEN_LENGTH=${#RELEASE_GITHUB_TOKEN}"
 
   - git config --global user.name "yasminemarzouk"
   - git config --global user.email "marzouk.yasmine@esprit.tn"
   - git config --global --add safe.directory '*'
 
   - git ls-remote https://x-access-token:${RELEASE_GITHUB_TOKEN}@github.com/${release_repo}.git
-  - git clone https://x-access-token:${GITHUBTOKEN}@github.com/${release_repo}.git repo
+  - git clone https://x-access-token:${RELEASE_GITHUB_TOKEN_TOKEN}@github.com/${release_repo}.git repo
