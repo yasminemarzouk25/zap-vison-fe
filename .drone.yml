@@ -216,14 +216,16 @@ steps:
     GITHUBTOKEN:
       from_secret: GITHUBTOKEN
   commands:
-    - export $(cat .outputs | xargs)
-    - git config --global user.name "yasminemarzouk"
-    - git config --global user.email "marzouk.yasmine@esprit.tn"
-    - git config --global --add safe.directory '*'
-    - git ls-remote https://x-access-token:${GITHUBTOKEN}@github.com/${release_repo}.git
-    - echo "TOKEN_LENGTH=${#GITHUBTOKEN}"
-    - git clone https://x-access-token:${GITHUBTOKEN}@github.com/${release_repo}.git repo
-    - cd repo/$kustomize_folder
-    - kustomize edit set image $docker_tag
-    - git commit -am "Deploy $environment $docker_tag"
-    - git push
+  - set -a
+  - source .outputs
+  - set +a
+
+  - echo "release_repo=$release_repo"
+  - echo "TOKEN_LENGTH=${#GITHUBTOKEN}"
+
+  - git config --global user.name "yasminemarzouk"
+  - git config --global user.email "marzouk.yasmine@esprit.tn"
+  - git config --global --add safe.directory '*'
+
+  - git ls-remote https://x-access-token:${GITHUBTOKEN}@github.com/${release_repo}.git
+  - git clone https://x-access-token:${GITHUBTOKEN}@github.com/${release_repo}.git repo
