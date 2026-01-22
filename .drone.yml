@@ -403,4 +403,3 @@ steps:
     - git add .
     - git commit -m "Release $environment $docker_tag"
     - git push
-#
