@@ -212,20 +212,20 @@ steps:
   # when:
   #   status:
   #     - success
-  environment:
-    RELEASE_GITHUB_TOKEN:
-      from_secret: RELEASE_GITHUB_TOKEN
+  # environment:
+  #   RELEASE_GITHUB_TOKEN:
+  #     from_secret: RELEASE_GITHUB_TOKEN
   commands:
   - set -a
   - source .outputs
   - set +a
 
   - echo "release_repo=$release_repo"
-  - echo "TOKEN_LENGTH=${#RELEASE_GITHUB_TOKEN}"
+  # - echo "TOKEN_LENGTH=${#RELEASE_GITHUB_TOKEN}"
 
   - git config --global user.name "yasminemarzouk"
   - git config --global user.email "marzouk.yasmine@esprit.tn"
   - git config --global --add safe.directory '*'
 
-  - git ls-remote https://x-access-token:${RELEASE_GITHUB_TOKEN}@github.com/${release_repo}.git
-  - git clone https://x-access-token:${RELEASE_GITHUB_TOKEN_TOKEN}@github.com/${release_repo}.git repo
+  - git ls-remote https://x-access-token:${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}@github.com/${release_repo}.git
+  - git clone https://x-access-token:${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_TOKEN}@github.com/${release_repo}.git repo
