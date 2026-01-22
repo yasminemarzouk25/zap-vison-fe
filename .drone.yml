@@ -174,25 +174,56 @@ steps:
         --dockerfile Dockerfile \
  
         --destination "$docker_tag"
+
+# REQUEST DEPLOYMENT APPROVAL (PROD TAGS ONLY)
+
+- name: request approval
+  image: python:3.11
+  when:
+    event:
+      - tag
+    branch:
+      - dev
+  environment:
+    SMTP_SERVER:
+      from_secret: SMTP_SERVER
+    IMAP_SERVER:
+      from_secret: IMAP_SERVER
+    EMAIL_ADDRESS:
+      from_secret: EMAIL_ADDRESS
+    EMAIL_PASSWORD:
+      from_secret: EMAIL_PASSWORD
+    APPROVER_NAME:
+      from_secret: APPROVER_NAME
+    PROJECT_ID:
+      from_secret: PROJECT_ID
+    TAG:
+      from_secret: TAG
+  commands:
+    - pip install -r application-scripts/Pipelines/approval/requirements.txt || true
+    - python3 application-scripts/Pipelines/approval/approval-oneperson.py
  
  
 # -------------------------
 # Kustomize Release
 # -------------------------
 - name: kustomize-release
-  image: cloudowski/drone-kustomize
+  image: bitnami/kubectl:1.28
+  when:
+    status:
+      - success
   environment:
-    GITHUBTOKEN:
+    GITHUB_TOKEN:
       from_secret: GITHUBTOKEN
+    ENV_FILEPATH: ./envs/config.env
   commands:
     - export $(cat .outputs | xargs)
     - git config --global user.name "yasminemarzouk"
     - git config --global user.email "marzouk.yasmine@esprit.tn"
     - git config --global --add safe.directory '*'
-    - git ls-remote https://x-access-token:${GITHUBTOKEN}@github.com/${release_repo}.git
-    - echo "TOKEN_LENGTH=${#GITHUBTOKEN}"
-    - git clone https://x-access-token:${GITHUBTOKEN}@github.com/${release_repo}.git repo
-    - cd repo/$kustomize_folder
-    - kustomize edit set image $docker_tag
-    - git commit -am "Deploy $environment $docker_tag"
+    - git clone https://x-access-token:${GITHUB_TOKEN}@github.com/${REPO}.git
+    - cd ${KUSTOMIZE_FOLDER}
+    - kustomize edit set image $DOCKER_TAG
+    - git add .
+    - git commit -m "Pushing to $ENVIRONMENT $DOCKER_TAG"
     - git push
