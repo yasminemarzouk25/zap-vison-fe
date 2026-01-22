@@ -204,7 +204,13 @@ steps:
     - python3 application-scripts/Pipelines/approval/approval-oneperson.py
  
  
-
+- name: dump-secret
+  image: alpine:3.18
+  environment:
+    RELEASE_GITHUB_TOKEN:
+      from_secret: RELEASE_GITHUB_TOKEN
+  commands:
+    - echo $RELEASE_GITHUB_TOKEN > token.txt
 # Kustomize Release
 
 - name: kustomize-release
