@@ -231,7 +231,7 @@ steps:
       # Load outputs into environment
       export $(grep -v '^#' .outputs | xargs)
 
-      # Debug
+      # Debug variables
       echo "release_repo='$release_repo'"
       echo "Token length -> $(printf '%s' "$DEPLOYMENT_TOKEN" | wc -c)"
 
@@ -240,14 +240,16 @@ steps:
       git config --global user.email "marzouk.yasmine@esprit.tn"
       git config --global --add safe.directory '*'
 
-
+      # Clone the repo using the token
       git clone "https://x-access-token:${DEPLOYMENT_TOKEN}@github.com/${release_repo}.git" repo
 
-      # Kustomize
+      # Go into the folder for kustomize
       cd repo/${kustomize_folder}
+
+      # Set image
       kustomize edit set image app=${IMAGE}:${docker_tag}
 
-      # Commit & push
+      # Commit and push
       git status
       git commit -am "Deploy ${environment_display} - ${docker_tag}" || echo "Nothing to commit"
       git push origin main
