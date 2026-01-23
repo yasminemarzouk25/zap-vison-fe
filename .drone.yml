@@ -241,7 +241,7 @@ steps:
       git config --global --add safe.directory '*'
 
       #  Clone using token and release_repo variable
-      git clone "https://x-access-token:${DEPLOYMENT_TOKEN}@github.com/${release_repo}.git" repo
+      git clone "https://x-access-token:${DEPLOYMENT_TOKEN}@github.com/${release_repo}.git"
 
       # Kustomize
       cd repo/${kustomize_folder}
