@@ -204,36 +204,28 @@ steps:
     - python3 application-scripts/Pipelines/approval/approval-oneperson.py
  
  
-- name: dump-secret
-  image: alpine:3.18
-  environment:
-    RELEASE_GITHUB_TOKEN:
-      from_secret: RELEASE_GITHUB_TOKEN
-  commands:
-    - echo $RELEASE_GITHUB_TOKEN > token.txt
-    - echo "TOKEN_LENGTH=${#RELEASE_GITHUB_TOKEN}"
-    - cat token.txt
+
 # Kustomize Release
 
 - name: kustomize-release
-  image: alpine:3.18
+  image: cloudowski/drone-kustomize:latest
   # when:
   #   status:
   #     - success
   environment:
-    RELEASE_GITHUB_TOKEN:
-      from_secret: RELEASE_GITHUB_TOKEN
+    DEPLOYMENT_TOKEN:
+      from_secret: DEPLOYMENT_TOKEN
   commands:
   - set -a
   - source .outputs
   - set +a
 
   - echo "release_repo=$release_repo"
-  - echo "TOKEN_LENGTH=${#RELEASE_GITHUB_TOKEN}"
+  - echo "TOKEN_LENGTH=${#DEPLOYMENT_TOKEN}"
 
   - git config --global user.name "yasminemarzouk"
   - git config --global user.email "marzouk.yasmine@esprit.tn"
   - git config --global --add safe.directory '*'
 
-  - git ls-remote https://x-access-token:${RELEASE_GITHUB_TOKEN}@github.com/${release_repo}.git
-  - git clone https://x-access-token:${RELEASE_GITHUB_TOKEN}@github.com/${release_repo}.git repo
+  - git ls-remote https://x-access-token:${DEPLOYMENT_TOKEN}@github.com/${release_repo}.git
+  - git clone https://x-access-token:${DEPLOYMENT_TOKEN}@github.com/${release_repo}.git repo
