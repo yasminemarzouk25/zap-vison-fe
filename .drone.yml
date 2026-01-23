@@ -228,7 +228,7 @@ steps:
   commands:
     - set -e
     - |
-      # Load variables
+      # Load outputs into environment
       export $(grep -v '^#' .outputs | xargs)
 
       # Debug
@@ -240,7 +240,7 @@ steps:
       git config --global user.email "marzouk.yasmine@esprit.tn"
       git config --global --add safe.directory '*'
 
-     
+
       git clone "https://x-access-token:${DEPLOYMENT_TOKEN}@github.com/${release_repo}.git" repo
 
       # Kustomize
