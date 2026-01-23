@@ -210,8 +210,10 @@ steps:
     DEPLOYMENT_TOKEN:
       from_secret: DEPLOYMENT_TOKEN
   commands:
-    - echo "TOKEN_LENGTH=${#DEPLOYMENT_TOKEN}"
+    - echo "TOKEN_LENGTH=$(printf "%s" "$DEPLOYMENT_TOKEN" | wc -c)"
     - env | sort
+    - echo "Token exists? -> ${DEPLOYMENT_TOKEN:+YES}"
+    - echo "Token length -> ${#DEPLOYMENT_TOKEN}"
 
 # Kustomize Release
 
