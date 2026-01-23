@@ -227,25 +227,27 @@ steps:
       from_secret: DEPLOYMENT_TOKEN
   commands:
     - set -e
+    - |
+      # Load variables
+      export $(grep -v '^#' .outputs | xargs)
 
-    # Load outputs safely in their own shell
-    - export $(grep -v '^#' .outputs | xargs)
-    - echo "release_repo='$release_repo'"
-    - echo "Token length -> $(printf '%s' "$DEPLOYMENT_TOKEN" | wc -c)"
+      # Debug
+      echo "release_repo='$release_repo'"
+      echo "Token length -> $(printf '%s' "$DEPLOYMENT_TOKEN" | wc -c)"
 
-    # Git config
-    - git config --global user.name "yasminemarzouk"
-    - git config --global user.email "marzouk.yasmine@esprit.tn"
-    - git config --global --add safe.directory '*'
+      # Git config
+      git config --global user.name "yasminemarzouk"
+      git config --global user.email "marzouk.yasmine@esprit.tn"
+      git config --global --add safe.directory '*'
 
-    # Clone using token and repo
-    - git clone "https://x-access-token:${DEPLOYMENT_TOKEN}@github.com/${release_repo}.git" repo
+     
+      git clone "https://x-access-token:${DEPLOYMENT_TOKEN}@github.com/${release_repo}.git" repo
 
-    # Kustomize
-    - cd repo/${kustomize_folder}
-    - "kustomize edit set image app=${IMAGE}:${docker_tag}"
+      # Kustomize
+      cd repo/${kustomize_folder}
+      kustomize edit set image app=${IMAGE}:${docker_tag}
 
-    # Commit & push
-    - git status
-    - git commit -am "Deploy ${environment_display} - ${docker_tag}" || echo "Nothing to commit"
-    - git push origin main
+      # Commit & push
+      git status
+      git commit -am "Deploy ${environment_display} - ${docker_tag}" || echo "Nothing to commit"
+      git push origin main
