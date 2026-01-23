@@ -240,7 +240,7 @@ steps:
       git config --global user.email "marzouk.yasmine@esprit.tn"
       git config --global --add safe.directory '*'
 
-      # Clone using token and repo
+      #  Clone using token and release_repo variable
       git clone "https://x-access-token:${DEPLOYMENT_TOKEN}@github.com/${release_repo}.git" repo
 
       # Kustomize
