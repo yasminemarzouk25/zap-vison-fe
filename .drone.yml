@@ -248,8 +248,6 @@ steps:
     # Kustomize example
     - cd repo/${kustomize_folder}
     - kustomize edit set image app=${IMAGE}:${docker_tag}
-
-    # Commit & push
-    - git add .
-    - git commit -m "chore: release ${docker_tag}"
-    - git push origin main
+    - git status
+    - git commit -am "Deploy ${environment_display} - ${docker_tag}" || echo "Nothing to commit"
+    - git push
