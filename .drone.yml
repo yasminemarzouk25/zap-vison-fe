@@ -226,23 +226,30 @@ steps:
     DEPLOYMENT_TOKEN:
       from_secret: DEPLOYMENT_TOKEN
   commands:
-  - set -a
-  - source .outputs
-  - set +a
+    - set -e
 
-  - echo "release_repo=$release_repo"
-  - echo "Token present -> ${DEPLOYMENT_TOKEN:+YES}"
-  - echo "Token length -> $(printf "%s" "$DEPLOYMENT_TOKEN" | wc -c)"
+    # Load outputs
+    - set -a
+    - source .outputs
+    - set +a
 
-  - git config --global user.name "yasminemarzouk"
-  - git config --global user.email "marzouk.yasmine@esprit.tn"
-  - git config --global --add safe.directory '*'
+    # Sanity checks
+    - echo "release_repo=$release_repo"
+    - echo "Token length -> $(printf "%s" "$DEPLOYMENT_TOKEN" | wc -c)"
 
-  - git clone https://x-access-token:${DEPLOYMENT_TOKEN}@github.com/${release_repo}.git repo
+    # Git config
+    - git config --global user.name "yasminemarzouk"
+    - git config --global user.email "marzouk.yasmine@esprit.tn"
+    - git config --global --add safe.directory '*'
 
-  - cd repo/$kustomize_folder
-  - kustomize edit set image $docker_tag
+    # Clone using token (THIS IS THE FIX)
+    - git clone https://x-access-token:${DEPLOYMENT_TOKEN}@github.com/${release_repo}.git repo
 
-  - git status
-  - git commit -am "Deploy ${environment_display} - ${docker_tag}" || echo "Nothing to commit"
-  - git push
+    # Kustomize example
+    - cd repo/${kustomize_folder}
+    - kustomize edit set image app=${IMAGE}:${docker_tag}
+
+    # Commit & push
+    - git add .
+    - git commit -m "chore: release ${docker_tag}"
+    - git push origin main
