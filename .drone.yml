@@ -226,14 +226,13 @@ steps:
     DEPLOYMENT_TOKEN:
       from_secret: DEPLOYMENT_TOKEN
   commands:
-     - set -e
+    - set -e
 
     # Load outputs properly
-    - export $(grep -v '^#' .outputs | xargs)
-
-    # Debug
-    - echo "release_repo='$release_repo'"
-    - echo "Token length -> $(printf "%s" "$DEPLOYMENT_TOKEN" | wc -c)"
+    - |
+      export $(grep -v '^#' .outputs | xargs)
+      echo "release_repo='$release_repo'"
+      echo "Token length -> $(printf "%s" "$DEPLOYMENT_TOKEN" | wc -c)"
 
     # Git config
     - git config --global user.name "yasminemarzouk"
