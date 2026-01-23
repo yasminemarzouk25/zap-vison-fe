@@ -242,12 +242,14 @@ steps:
     - git config --global user.email "marzouk.yasmine@esprit.tn"
     - git config --global --add safe.directory '*'
 
-    # Clone using token (THIS IS THE FIX)
+    # Clone using token
     - git clone https://x-access-token:${DEPLOYMENT_TOKEN}@github.com/${release_repo}.git repo
 
-    # Kustomize example
+    # Kustomize
     - cd repo/${kustomize_folder}
-    - kustomize edit set image app=${IMAGE}:${docker_tag}
+    - "kustomize edit set image app=${IMAGE}:${docker_tag}"
+
+    # Commit & push
     - git status
     - git commit -am "Deploy ${environment_display} - ${docker_tag}" || echo "Nothing to commit"
-    - git push
+    - git push origin main
