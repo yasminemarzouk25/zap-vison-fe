@@ -231,11 +231,18 @@ steps:
   - set +a
 
   - echo "release_repo=$release_repo"
-  - echo "TOKEN_LENGTH=${#DEPLOYMENT_TOKEN}"
+  - echo "Token present -> ${DEPLOYMENT_TOKEN:+YES}"
+  - echo "Token length -> $(printf "%s" "$DEPLOYMENT_TOKEN" | wc -c)"
 
   - git config --global user.name "yasminemarzouk"
   - git config --global user.email "marzouk.yasmine@esprit.tn"
   - git config --global --add safe.directory '*'
 
-  - git ls-remote https://x-access-token:${DEPLOYMENT_TOKEN}@github.com/${release_repo}.git
   - git clone https://x-access-token:${DEPLOYMENT_TOKEN}@github.com/${release_repo}.git repo
+
+  - cd repo/$kustomize_folder
+  - kustomize edit set image $docker_tag
+
+  - git status
+  - git commit -am "Deploy ${environment_display} - ${docker_tag}" || echo "Nothing to commit"
+  - git push
