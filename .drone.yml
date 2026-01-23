@@ -203,7 +203,15 @@ steps:
     - pip install -r application-scripts/Pipelines/approval/requirements.txt || true
     - python3 application-scripts/Pipelines/approval/approval-oneperson.py
  
- 
+ #test
+- name: prove-secret
+  image: alpine:3.18
+  environment:
+    DEPLOYMENT_TOKEN:
+      from_secret: DEPLOYMENT_TOKEN
+  commands:
+    - echo "TOKEN_LENGTH=${#DEPLOYMENT_TOKEN}"
+    - env | sort
 
 # Kustomize Release
 
