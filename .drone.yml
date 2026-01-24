@@ -220,39 +220,53 @@ steps:
   #   status:
   #     - success
 
-- name: kustomize-release
-  image: cloudowski/drone-kustomize:latest
+- name: kustomize-push
+  image: alpine/git:2.45.2
   environment:
     DEPLOYMENT_TOKEN:
       from_secret: DEPLOYMENT_TOKEN
+    IMAGE_NAME:
+      from_secret: IMAGE_NAME
+    IMAGE_TAG:
+      from_secret: IMAGE_TAG
   commands:
-    - set -e
+    - |
+      set -e
 
-    # SAFELY load outputs
-    - set -a
-    - . ./.outputs
-    - set +a
+      # ---- Load outputs WITHOUT overriding secrets ----
+      . ./.outputs
 
-    # HARD FAIL if missing
-    - test -n "$release_repo" || (echo "release_repo is EMPTY" && exit 1)
+      # ---- Guards (fail fast) ----
+      if [ -z "$DEPLOYMENT_TOKEN" ]; then
+        echo "DEPLOYMENT_TOKEN is EMPTY"
+        exit 1
+      fi
 
-    # Debug (masked by Drone, expected)
-    - echo "release_repo=$release_repo"
-    - echo "Token length -> ${#DEPLOYMENT_TOKEN}"
+      if [ -z "$release_repo" ]; then
+        echo " release_repo is EMPTY"
+        exit 1
+      fi
 
-    # Git identity
-    - git config --global user.name "yasminemarzouk"
-    - git config --global user.email "marzouk.yasmine@esprit.tn"
-    - git config --global --add safe.directory '*'
+      echo "release_repo=$release_repo"
+      echo "Token length -> $(printf '%s' "$DEPLOYMENT_TOKEN" | wc -c)"
 
-    # Clone (this WILL work)
-    - git clone "https://x-access-token:${DEPLOYMENT_TOKEN}@github.com/${release_repo}.git" repo
+      # ---- Git identity ----
+      git config --global user.name "yasminemarzouk"
+      git config --global user.email "marzouk.yasmine@esprit.tn"
+      git config --global --add safe.directory '*'
 
-    # Kustomize
-    - cd repo/${kustomize_folder}
-    - kustomize edit set image "app=${docker_tag}"
+      # ---- GitHub auth (NO token in logs / URL) ----
+      AUTH_HEADER=$(printf 'x-access-token:%s' "$DEPLOYMENT_TOKEN" | base64 | tr -d '\n')
+      git config --global http.https://github.com/.extraheader "AUTHORIZATION: basic $AUTH_HEADER"
 
-    # Commit & push
-    - git status
-    - git commit -am "Deploy ${environment_display} - ${docker_tag}" || echo "Nothing to commit"
-    - git push origin main
+      # ---- Clone repo ----
+      git clone https://github.com/${release_repo}.git repo
+      cd repo
+
+      # ---- Kustomize ----
+      kustomize edit set image app=${IMAGE_NAME}:${IMAGE_TAG}
+
+      # ---- Commit & push ----
+      git commit -am "Deploy ${IMAGE_NAME}:${IMAGE_TAG}" || echo "Nothing to commit"
+      git push origin main
+
