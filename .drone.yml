@@ -227,25 +227,31 @@ steps:
       from_secret: DEPLOYMENT_TOKEN
     RELEASE_REPO:
       from_secret: RELEASE_REPO
+    IMAGE_NAME:
+      from_secret: IMAGE_NAME
+    IMAGE_TAG:
+      from_secret: IMAGE_TAG
   commands:
-    - |
+    - |-
       set -e
 
-      echo "RELEASE_REPO=${RELEASE_REPO}"
+      echo "RELEASE_REPO=$RELEASE_REPO"
       echo "Token length -> $(printf '%s' "$DEPLOYMENT_TOKEN" | wc -c)"
 
+      # Git identity
       git config --global user.name "yasminemarzouk"
       git config --global user.email "marzouk.yasmine@esprit.tn"
       git config --global --add safe.directory '*'
 
-      # Build auth header safely
+      # Build auth header SAFELY
       AUTH_HEADER=$(printf 'x-access-token:%s' "$DEPLOYMENT_TOKEN" | base64 | tr -d '\n')
+      git config --global http.https://github.com/.extraheader "AUTHORIZATION: basic $AUTH_HEADER"
 
-      git config --global http.https://github.com/.extraheader "AUTHORIZATION: basic ${AUTH_HEADER}"
-
+      # Clone repo
       git clone https://github.com/${RELEASE_REPO}.git repo
-
       cd repo
+
+      # Update image via kustomize
       kustomize edit set image app=${IMAGE_NAME}:${IMAGE_TAG}
 
       git commit -am "Deploy" || echo "Nothing to commit"
