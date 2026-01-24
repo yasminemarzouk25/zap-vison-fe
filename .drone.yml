@@ -231,15 +231,19 @@ steps:
     - |
       set -e
 
-      echo "RELEASE_REPO=$RELEASE_REPO"
+      echo "RELEASE_REPO=${RELEASE_REPO}"
       echo "Token length -> $(printf '%s' "$DEPLOYMENT_TOKEN" | wc -c)"
-      echo "DEBUG URL -> https://github.com/${RELEASE_REPO}.git"
 
       git config --global user.name "yasminemarzouk"
       git config --global user.email "marzouk.yasmine@esprit.tn"
       git config --global --add safe.directory '*'
 
-      git clone "https://x-access-token:${DEPLOYMENT_TOKEN}@github.com/${RELEASE_REPO}.git" repo
+      # Build auth header safely
+      AUTH_HEADER=$(printf 'x-access-token:%s' "$DEPLOYMENT_TOKEN" | base64 | tr -d '\n')
+
+      git config --global http.https://github.com/.extraheader "AUTHORIZATION: basic ${AUTH_HEADER}"
+
+      git clone https://github.com/${RELEASE_REPO}.git repo
 
       cd repo
       kustomize edit set image app=${IMAGE_NAME}:${IMAGE_TAG}
