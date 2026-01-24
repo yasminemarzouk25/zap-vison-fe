@@ -217,9 +217,10 @@ steps:
 
 # Kustomize Release
 
-- name: kustomize-release
-  image: cloudowski/drone-kustomize:latest
-  # when:
+
+- name: kustomize-push
+  image: alpine/git
+    # when:
   #   status:
   #     - success
   environment:
@@ -229,25 +230,20 @@ steps:
     - |
       set -e
 
-
       export $(grep -v '^#' .outputs | xargs)
 
-
-      echo "release_repo=$release_repo"
+      echo "release_repo=${release_repo}"
       echo "Token length -> $(printf '%s' "$DEPLOYMENT_TOKEN" | wc -c)"
-
+      echo "DEBUG URL -> https://github.com/${release_repo}.git"
 
       git config --global user.name "yasminemarzouk"
       git config --global user.email "marzouk.yasmine@esprit.tn"
       git config --global --add safe.directory '*'
 
-
       git clone "https://x-access-token:${DEPLOYMENT_TOKEN}@github.com/${release_repo}.git" repo
-
 
       cd repo
       kustomize edit set image app=${IMAGE_NAME}:${IMAGE_TAG}
-
 
       git commit -am "Deploy" || echo "Nothing to commit"
       git push origin main
