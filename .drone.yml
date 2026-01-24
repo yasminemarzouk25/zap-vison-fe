@@ -225,16 +225,16 @@ steps:
   environment:
     DEPLOYMENT_TOKEN:
       from_secret: DEPLOYMENT_TOKEN
-    IMAGE_NAME:
-      from_secret: IMAGE_NAME
-    IMAGE_TAG:
-      from_secret: IMAGE_TAG
   commands:
     - |-
       set -e
 
       # ---- Load outputs (DO NOT export) ----
       . ./.outputs
+
+      # ---- Derive IMAGE_NAME and IMAGE_TAG from docker_tag ----
+      IMAGE_NAME=$(echo "$docker_tag" | cut -d':' -f1 | cut -d'/' -f2)
+      IMAGE_TAG=$(echo "$docker_tag" | cut -d':' -f2)
 
       # ---- Guards ----
       [ -n "$DEPLOYMENT_TOKEN" ] || { echo "DEPLOYMENT_TOKEN is EMPTY"; exit 1; }
@@ -268,3 +268,4 @@ steps:
       git status
       git commit -am "Deploy ${environment_display:-env} - ${IMAGE_NAME}:${IMAGE_TAG}" || echo "Nothing to commit"
       git push origin main
+
