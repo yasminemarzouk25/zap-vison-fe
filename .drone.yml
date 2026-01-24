@@ -216,31 +216,30 @@ steps:
     - echo "Token length -> ${#DEPLOYMENT_TOKEN}"
 
 # Kustomize Release
-
-
-- name: kustomize-push
-  image: alpine/git
     # when:
   #   status:
   #     - success
+
+- name: kustomize-push
+  image: alpine/git
   environment:
     DEPLOYMENT_TOKEN:
       from_secret: DEPLOYMENT_TOKEN
+    RELEASE_REPO:
+      from_secret: RELEASE_REPO
   commands:
     - |
       set -e
 
-      export $(grep -v '^#' .outputs | xargs)
-
-      echo "release_repo=${release_repo}"
+      echo "RELEASE_REPO=$RELEASE_REPO"
       echo "Token length -> $(printf '%s' "$DEPLOYMENT_TOKEN" | wc -c)"
-      echo "DEBUG URL -> https://github.com/${release_repo}.git"
+      echo "DEBUG URL -> https://github.com/${RELEASE_REPO}.git"
 
       git config --global user.name "yasminemarzouk"
       git config --global user.email "marzouk.yasmine@esprit.tn"
       git config --global --add safe.directory '*'
 
-      git clone "https://x-access-token:${DEPLOYMENT_TOKEN}@github.com/${release_repo}.git" repo
+      git clone "https://x-access-token:${DEPLOYMENT_TOKEN}@github.com/${RELEASE_REPO}.git" repo
 
       cd repo
       kustomize edit set image app=${IMAGE_NAME}:${IMAGE_TAG}
