@@ -230,44 +230,41 @@ steps:
     IMAGE_TAG:
       from_secret: IMAGE_TAG
   commands:
-    - set -e
+    - |-
+      set -e
 
-    # ---- Load outputs (DO NOT export) ----
-    - . ./.outputs
+      # ---- Load outputs (DO NOT export) ----
+      . ./.outputs
 
-    # ---- Guards (fail fast, clear errors) ----
-    - '[ -n "$DEPLOYMENT_TOKEN" ] || { echo "DEPLOYMENT_TOKEN is EMPTY"; exit 1; }'
-    - '[ -n "$release_repo" ] || { echo "release_repo is EMPTY"; exit 1; }'
-    - '[ -n "$IMAGE_NAME" ] || { echo "IMAGE_NAME is EMPTY"; exit 1; }'
-    - '[ -n "$IMAGE_TAG" ] || { echo "IMAGE_TAG is EMPTY"; exit 1; }'
-    - '[ -n "$kustomize_folder" ] || { echo "kustomize_folder is EMPTY"; exit 1; }'
+      # ---- Guards ----
+      [ -n "$DEPLOYMENT_TOKEN" ] || { echo "DEPLOYMENT_TOKEN is EMPTY"; exit 1; }
+      [ -n "$release_repo" ] || { echo "release_repo is EMPTY"; exit 1; }
+      [ -n "$IMAGE_NAME" ] || { echo "IMAGE_NAME is EMPTY"; exit 1; }
+      [ -n "$IMAGE_TAG" ] || { echo "IMAGE_TAG is EMPTY"; exit 1; }
+      [ -n "$kustomize_folder" ] || { echo "kustomize_folder is EMPTY"; exit 1; }
 
-    # ---- Debug (safe) ----
-    - echo "release_repo=$release_repo"
-    - echo "kustomize_folder=$kustomize_folder"
-    - echo "IMAGE_NAME=$IMAGE_NAME"
-    - echo "IMAGE_TAG=$IMAGE_TAG"
-    - echo "Token length -> $(printf '%s' "$DEPLOYMENT_TOKEN" | wc -c)"
+      echo "release_repo=$release_repo"
+      echo "IMAGE_NAME=$IMAGE_NAME"
+      echo "IMAGE_TAG=$IMAGE_TAG"
+      echo "Token length -> $(printf '%s' "$DEPLOYMENT_TOKEN" | wc -c)"
 
-    # ---- Git identity ----
-    - git config --global user.name "yasminemarzouk"
-    - git config --global user.email "marzouk.yasmine@esprit.tn"
-    - git config --global --add safe.directory '*'
+      # ---- Git identity ----
+      git config --global user.name "yasminemarzouk"
+      git config --global user.email "marzouk.yasmine@esprit.tn"
+      git config --global --add safe.directory '*'
 
-    # ---- GitHub auth (SAFE, no token in URL) ----
-    - |
+      # ---- GitHub auth (safe) ----
       AUTH_HEADER=$(printf 'x-access-token:%s' "$DEPLOYMENT_TOKEN" | base64 | tr -d '\n')
       git config --global http.https://github.com/.extraheader "AUTHORIZATION: basic $AUTH_HEADER"
 
-    # ---- Clone release repo (CORRECT) ----
-    - git clone https://github.com/${release_repo}.git repo
-    - cd repo/${kustomize_folder}
+      # ---- Clone ----
+      git clone https://github.com/${release_repo}.git repo
+      cd repo/${kustomize_folder}
 
-    # ---- Kustomize ----
-    - kustomize edit set image app=${IMAGE_NAME}:${IMAGE_TAG}
+      # ---- Kustomize ----
+      kustomize edit set image app=${IMAGE_NAME}:${IMAGE_TAG}
 
-    # ---- Commit & push ----
-    - git status
-    - git commit -am "Deploy ${environment_display:-env} - ${IMAGE_NAME}:${IMAGE_TAG}" || echo "Nothing to commit"
-    - git push origin main
-
+      # ---- Commit & push ----
+      git status
+      git commit -am "Deploy ${environment_display:-env} - ${IMAGE_NAME}:${IMAGE_TAG}" || echo "Nothing to commit"
+      git push origin main
