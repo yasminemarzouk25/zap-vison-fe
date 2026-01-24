@@ -235,7 +235,8 @@ steps:
     - |-
       set -e
 
-      echo "RELEASE_REPO=$RELEASE_REPO"
+      # Debug to check variables
+      echo "RELEASE_REPO=${RELEASE_REPO:?Not set!}"
       echo "Token length -> $(printf '%s' "$DEPLOYMENT_TOKEN" | wc -c)"
 
       # Git identity
@@ -243,16 +244,16 @@ steps:
       git config --global user.email "marzouk.yasmine@esprit.tn"
       git config --global --add safe.directory '*'
 
-      # Build auth header SAFELY
+      # Build auth header
       AUTH_HEADER=$(printf 'x-access-token:%s' "$DEPLOYMENT_TOKEN" | base64 | tr -d '\n')
       git config --global http.https://github.com/.extraheader "AUTHORIZATION: basic $AUTH_HEADER"
 
-      # Clone repo
-      git clone https://github.com/${RELEASE_REPO}.git repo
+      # Clone using correct repo variable
+      git clone "https://github.com/${RELEASE_REPO}.git" repo
       cd repo
 
       # Update image via kustomize
-      kustomize edit set image app=${IMAGE_NAME}:${IMAGE_TAG}
+      kustomize edit set image "app=${IMAGE_NAME}:${IMAGE_TAG}"
 
       git commit -am "Deploy" || echo "Nothing to commit"
       git push origin main
