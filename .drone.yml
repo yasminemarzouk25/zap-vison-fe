@@ -254,6 +254,7 @@ steps:
       git config --global --add safe.directory '*'
 
       # ---- Clone with token (works for private repos) ----
+      echo "Cloning https://${DEPLOYMENT_TOKEN}@github.com/${release_repo}.git"
       git clone https://${DEPLOYMENT_TOKEN}@github.com/${release_repo}.git repo
       cd repo/${kustomize_folder}
 
@@ -264,6 +265,5 @@ steps:
       git status
       git commit -am "Deploy ${environment_display:-env} - ${IMAGE_NAME}:${IMAGE_TAG}" || echo "Nothing to commit"
       git push origin main
-
 
 
