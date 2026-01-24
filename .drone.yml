@@ -233,40 +233,35 @@ steps:
     - |
       set -e
 
-      # ---- Load outputs WITHOUT overriding secrets ----
+      # Load outputs
       . ./.outputs
 
-      # ---- Guards (fail fast) ----
-      if [ -z "$DEPLOYMENT_TOKEN" ]; then
-        echo "DEPLOYMENT_TOKEN is EMPTY"
-        exit 1
-      fi
-
-      if [ -z "$release_repo" ]; then
-        echo " release_repo is EMPTY"
-        exit 1
-      fi
+      # Guards
+      [ -n "$DEPLOYMENT_TOKEN" ] || { echo "DEPLOYMENT_TOKEN is EMPTY"; exit 1; }
+      [ -n "$release_repo" ] || { echo "release_repo is EMPTY"; exit 1; }
+      [ -n "$IMAGE_NAME" ] || { echo "IMAGE_NAME is EMPTY"; exit 1; }
+      [ -n "$IMAGE_TAG" ] || { echo "IMAGE_TAG is EMPTY"; exit 1; }
 
       echo "release_repo=$release_repo"
+      echo "IMAGE_NAME=$IMAGE_NAME"
+      echo "IMAGE_TAG=$IMAGE_TAG"
       echo "Token length -> $(printf '%s' "$DEPLOYMENT_TOKEN" | wc -c)"
 
-      # ---- Git identity ----
+      # Git identity
       git config --global user.name "yasminemarzouk"
       git config --global user.email "marzouk.yasmine@esprit.tn"
       git config --global --add safe.directory '*'
 
-      # ---- GitHub auth (NO token in logs / URL) ----
+      # GitHub auth
       AUTH_HEADER=$(printf 'x-access-token:%s' "$DEPLOYMENT_TOKEN" | base64 | tr -d '\n')
       git config --global http.https://github.com/.extraheader "AUTHORIZATION: basic $AUTH_HEADER"
 
-      # ---- Clone repo ----
+      # ✅ CORRECT clone
       git clone https://github.com/${release_repo}.git repo
       cd repo
 
-      # ---- Kustomize ----
+      # Kustomize
       kustomize edit set image app=${IMAGE_NAME}:${IMAGE_TAG}
 
-      # ---- Commit & push ----
       git commit -am "Deploy ${IMAGE_NAME}:${IMAGE_TAG}" || echo "Nothing to commit"
       git push origin main
-
