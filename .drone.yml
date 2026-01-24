@@ -226,13 +226,14 @@ steps:
     DEPLOYMENT_TOKEN:
       from_secret: DEPLOYMENT_TOKEN
   commands:
-    - set -e
+    - |
+      set -e
 
 
       export $(grep -v '^#' .outputs | xargs)
 
 
-      echo "release_repo='$release_repo'"
+      echo "release_repo=$release_repo"
       echo "Token length -> $(printf '%s' "$DEPLOYMENT_TOKEN" | wc -c)"
 
 
