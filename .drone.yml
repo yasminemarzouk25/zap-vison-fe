@@ -220,36 +220,39 @@ steps:
   #   status:
   #     - success
 
-- name: kustomize-push
-  image: alpine/git
+- name: kustomize-release
+  image: cloudowski/drone-kustomize:latest
   environment:
     DEPLOYMENT_TOKEN:
       from_secret: DEPLOYMENT_TOKEN
-    RELEASE_REPO:
-      from_secret: RELEASE_REPO
-    IMAGE_NAME:
-      from_secret: IMAGE_NAME
-    IMAGE_TAG:
-      from_secret: IMAGE_TAG
   commands:
     - set -e
 
-    # Debug variables
-    - echo "RELEASE_REPO=$RELEASE_REPO"
-    - echo "Token length -> $(printf '%s' "$DEPLOYMENT_TOKEN" | wc -c)"
+    # SAFELY load outputs
+    - set -a
+    - . ./.outputs
+    - set +a
+
+    # HARD FAIL if missing
+    - test -n "$release_repo" || (echo "release_repo is EMPTY" && exit 1)
+
+    # Debug (masked by Drone, expected)
+    - echo "release_repo=$release_repo"
+    - echo "Token length -> ${#DEPLOYMENT_TOKEN}"
 
     # Git identity
     - git config --global user.name "yasminemarzouk"
     - git config --global user.email "marzouk.yasmine@esprit.tn"
     - git config --global --add safe.directory '*'
 
-    # Clone using token in URL (simplest and works reliably)
-    - git clone "https://x-access-token:${DEPLOYMENT_TOKEN}@github.com/${RELEASE_REPO}.git" repo
-    - cd repo
+    # Clone (this WILL work)
+    - git clone "https://x-access-token:${DEPLOYMENT_TOKEN}@github.com/${release_repo}.git" repo
 
-    # Update image via kustomize
-    - kustomize edit set image "app=${IMAGE_NAME}:${IMAGE_TAG}"
+    # Kustomize
+    - cd repo/${kustomize_folder}
+    - kustomize edit set image "app=${docker_tag}"
 
     # Commit & push
-    - git commit -am "Deploy" || echo "Nothing to commit"
+    - git status
+    - git commit -am "Deploy ${environment_display} - ${docker_tag}" || echo "Nothing to commit"
     - git push origin main
