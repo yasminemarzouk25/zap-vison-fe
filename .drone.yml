@@ -229,8 +229,10 @@ steps:
     - |-
       set -e
 
-      # ---- Load outputs ----
+      # ---- Load and export outputs ----
+      set -a
       . ./.outputs
+      set +a
 
       # ---- Derive IMAGE_NAME and IMAGE_TAG ----
       IMAGE_NAME=$(echo "$docker_tag" | cut -d':' -f1 | cut -d'/' -f2)
@@ -253,7 +255,7 @@ steps:
       git config --global user.email "marzouk.yasmine@esprit.tn"
       git config --global --add safe.directory '*'
 
-      # ---- Clone with token (works for private repos) ----
+      # ---- Clone with token ----
       echo "Cloning https://${DEPLOYMENT_TOKEN}@github.com/${release_repo}.git"
       git clone https://${DEPLOYMENT_TOKEN}@github.com/${release_repo}.git repo
       cd repo/${kustomize_folder}
@@ -265,6 +267,7 @@ steps:
       git status
       git commit -am "Deploy ${environment_display:-env} - ${IMAGE_NAME}:${IMAGE_TAG}" || echo "Nothing to commit"
       git push origin main
+
 
 
 
