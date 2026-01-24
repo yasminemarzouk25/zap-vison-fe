@@ -220,53 +220,46 @@ steps:
   #   status:
   #     - success
 
-- name: kustomize-release
-  image: alpine/git
-  environment:
-    DEPLOYMENT_TOKEN:
-      from_secret: DEPLOYMENT_TOKEN
-  commands:
-    - |-
-      set -e
+set -e
 
-      # ---- Load and export outputs ----
-      set -a
-      . ./.outputs
-      set +a
+# ---- Load and export outputs ----
+set -a
+. ./.outputs
+set +a
 
-      # ---- Derive IMAGE_NAME and IMAGE_TAG ----
-      IMAGE_NAME=$(echo "$docker_tag" | cut -d':' -f1 | cut -d'/' -f2)
-      IMAGE_TAG=$(echo "$docker_tag" | cut -d':' -f2)
+# ---- Derive IMAGE_NAME and IMAGE_TAG ----
+IMAGE_NAME=$(echo "$docker_tag" | cut -d':' -f1 | cut -d'/' -f2)
+IMAGE_TAG=$(echo "$docker_tag" | cut -d':' -f2)
 
-      # ---- Guards ----
-      [ -n "$DEPLOYMENT_TOKEN" ] || { echo "DEPLOYMENT_TOKEN is EMPTY"; exit 1; }
-      [ -n "$release_repo" ] || { echo "release_repo is EMPTY"; exit 1; }
-      [ -n "$IMAGE_NAME" ] || { echo "IMAGE_NAME is EMPTY"; exit 1; }
-      [ -n "$IMAGE_TAG" ] || { echo "IMAGE_TAG is EMPTY"; exit 1; }
-      [ -n "$kustomize_folder" ] || { echo "kustomize_folder is EMPTY"; exit 1; }
+# ---- Guards ----
+[ -n "$DEPLOYMENT_TOKEN" ] || { echo "DEPLOYMENT_TOKEN is EMPTY"; exit 1; }
+[ -n "$release_repo" ] || { echo "release_repo is EMPTY"; exit 1; }
+[ -n "$IMAGE_NAME" ] || { echo "IMAGE_NAME is EMPTY"; exit 1; }
+[ -n "$IMAGE_TAG" ] || { echo "IMAGE_TAG is EMPTY"; exit 1; }
+[ -n "$kustomize_folder" ] || { echo "kustomize_folder is EMPTY"; exit 1; }
 
-      echo "release_repo=$release_repo"
-      echo "IMAGE_NAME=$IMAGE_NAME"
-      echo "IMAGE_TAG=$IMAGE_TAG"
-      echo "Token length -> $(printf '%s' "$DEPLOYMENT_TOKEN" | wc -c)"
+echo "release_repo=$release_repo"
+echo "IMAGE_NAME=$IMAGE_NAME"
+echo "IMAGE_TAG=$IMAGE_TAG"
+echo "Token length -> $(printf '%s' "$DEPLOYMENT_TOKEN" | wc -c)"
 
-      # ---- Git identity ----
-      git config --global user.name "yasminemarzouk"
-      git config --global user.email "marzouk.yasmine@esprit.tn"
-      git config --global --add safe.directory '*'
+# ---- Git identity ----
+git config --global user.name "yasminemarzouk"
+git config --global user.email "marzouk.yasmine@esprit.tn"
+git config --global --add safe.directory '*'
 
-      # ---- Clone with token ----
-      echo "Cloning https://${DEPLOYMENT_TOKEN}@github.com/${release_repo}.git"
-      git clone https://${DEPLOYMENT_TOKEN}@github.com/${release_repo}.git repo
-      cd repo/${kustomize_folder}
+# ---- Clone with token (fix for private repo) ----
+echo "Cloning https://${DEPLOYMENT_TOKEN}@github.com/${release_repo}.git"
+git clone https://${DEPLOYMENT_TOKEN}@github.com/${release_repo}.git repo
+cd repo/${kustomize_folder}
 
-      # ---- Kustomize ----
-      kustomize edit set image app=${IMAGE_NAME}:${IMAGE_TAG}
+# ---- Kustomize ----
+kustomize edit set image app=${IMAGE_NAME}:${IMAGE_TAG}
 
-      # ---- Commit & push ----
-      git status
-      git commit -am "Deploy ${environment_display:-env} - ${IMAGE_NAME}:${IMAGE_TAG}" || echo "Nothing to commit"
-      git push origin main
+# ---- Commit & push ----
+git status
+git commit -am "Deploy env - ${IMAGE_NAME}:${IMAGE_TAG}" || echo "Nothing to commit"
+git push origin main
 
 
 
