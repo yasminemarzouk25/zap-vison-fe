@@ -232,28 +232,24 @@ steps:
     IMAGE_TAG:
       from_secret: IMAGE_TAG
   commands:
-    - |-
-      set -e
+    - set -e
 
-      # Debug to check variables
-      echo "RELEASE_REPO=${RELEASE_REPO:?Not set!}"
-      echo "Token length -> $(printf '%s' "$DEPLOYMENT_TOKEN" | wc -c)"
+    # Debug variables
+    - echo "RELEASE_REPO=$RELEASE_REPO"
+    - echo "Token length -> $(printf '%s' "$DEPLOYMENT_TOKEN" | wc -c)"
 
-      # Git identity
-      git config --global user.name "yasminemarzouk"
-      git config --global user.email "marzouk.yasmine@esprit.tn"
-      git config --global --add safe.directory '*'
+    # Git identity
+    - git config --global user.name "yasminemarzouk"
+    - git config --global user.email "marzouk.yasmine@esprit.tn"
+    - git config --global --add safe.directory '*'
 
-      # Build auth header
-      AUTH_HEADER=$(printf 'x-access-token:%s' "$DEPLOYMENT_TOKEN" | base64 | tr -d '\n')
-      git config --global http.https://github.com/.extraheader "AUTHORIZATION: basic $AUTH_HEADER"
+    # Clone using token in URL (simplest and works reliably)
+    - git clone "https://x-access-token:${DEPLOYMENT_TOKEN}@github.com/${RELEASE_REPO}.git" repo
+    - cd repo
 
-      # Clone using correct repo variable
-      git clone "https://github.com/${RELEASE_REPO}.git" repo
-      cd repo
+    # Update image via kustomize
+    - kustomize edit set image "app=${IMAGE_NAME}:${IMAGE_TAG}"
 
-      # Update image via kustomize
-      kustomize edit set image "app=${IMAGE_NAME}:${IMAGE_TAG}"
-
-      git commit -am "Deploy" || echo "Nothing to commit"
-      git push origin main
+    # Commit & push
+    - git commit -am "Deploy" || echo "Nothing to commit"
+    - git push origin main
