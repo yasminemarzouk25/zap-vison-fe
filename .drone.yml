@@ -1,16 +1,14 @@
 kind: pipeline
 type: kubernetes
 name: ci-pipeline
- 
+
 trigger:
   branch:
     - dev
- 
+
 steps:
- 
 
 # SonarQube
-
 - name: sonarqube
   image: sonarsource/sonar-scanner-cli
   environment:
@@ -20,163 +18,130 @@ steps:
       from_secret: SONAR_HOST_URL
   commands:
     - sonar-scanner
- 
 
 # Set environment (DEV / STG / PRD)
-
 - name: set-env
   image: node:18
   environment:
     DRONE_BRANCH: ${DRONE_BRANCH}
     DRONE_TAG: ${DRONE_TAG}
     DRONE_COMMIT_SHA: ${DRONE_COMMIT_SHA}
- 
-    GHA_IMAGE_NAME:
-      from_secret: GHA_IMAGE_NAME
-    GHA_REGISTRY_DOMAIN:
-      from_secret: GHA_REGISTRY_DOMAIN
- 
-    GHA_RELEASE_REPO_DEV:
-      from_secret: GHA_RELEASE_REPO_DEV
-    GHA_PROJECT_REPO_DEV:
-      from_secret: GHA_PROJECT_REPO_DEV
-    GHA_HELM_PROJECT_DEV:
-      from_secret: GHA_HELM_PROJECT_DEV
-    GHA_REGISTRY_NAME_DEV:
-      from_secret: GHA_REGISTRY_NAME_DEV
+
+    DRONE_IMAGE_NAME:
+      from_secret: DRONE_IMAGE_NAME
+    DRONE_REGISTRY_DOMAIN:
+      from_secret: DRONE_REGISTRY_DOMAIN
+
+    DRONE_RELEASE_REPO_DEV:
+      from_secret: DRONE_RELEASE_REPO_DEV
+    DRONE_PROJECT_REPO_DEV:
+      from_secret: DRONE_PROJECT_REPO_DEV
+    DRONE_HELM_PROJECT_DEV:
+      from_secret: DRONE_HELM_PROJECT_DEV
+    DRONE_REGISTRY_NAME_DEV:
+      from_secret: DRONE_REGISTRY_NAME_DEV
     ACR_USERNAME_DEV:
       from_secret: ACR_USERNAME_DEV
     ACR_PASSWORD_DEV:
       from_secret: ACR_PASSWORD_DEV
- 
-    GHA_RELEASE_REPO_STG:
-      from_secret: GHA_RELEASE_REPO_STG
-    GHA_PROJECT_REPO_STG:
-      from_secret: GHA_PROJECT_REPO_STG
-    GHA_HELM_PROJECT_STG:
-      from_secret: GHA_HELM_PROJECT_STG
-    GHA_REGISTRY_NAME_STG:
-      from_secret: GHA_REGISTRY_NAME_STG
+
+    DRONE_RELEASE_REPO_STG:
+      from_secret: DRONE_RELEASE_REPO_STG
+    DRONE_PROJECT_REPO_STG:
+      from_secret: DRONE_PROJECT_REPO_STG
+    DRONE_HELM_PROJECT_STG:
+      from_secret: DRONE_HELM_PROJECT_STG
+    DRONE_REGISTRY_NAME_STG:
+      from_secret: DRONE_REGISTRY_NAME_STG
     ACR_USERNAME_STG:
       from_secret: ACR_USERNAME_STG
     ACR_PASSWORD_STG:
       from_secret: ACR_PASSWORD_STG
- 
-    GHA_RELEASE_REPO_PRD:
-      from_secret: GHA_RELEASE_REPO_PRD
-    GHA_PROJECT_REPO_PRD:
-      from_secret: GHA_PROJECT_REPO_PRD
-    GHA_HELM_PROJECT_PRD:
-      from_secret: GHA_HELM_PROJECT_PRD
-    GHA_REGISTRY_NAME_PRD:
-      from_secret: GHA_REGISTRY_NAME_PRD
+
+    DRONE_RELEASE_REPO_PRD:
+      from_secret: DRONE_RELEASE_REPO_PRD
+    DRONE_PROJECT_REPO_PRD:
+      from_secret: DRONE_PROJECT_REPO_PRD
+    DRONE_HELM_PROJECT_PRD:
+      from_secret: DRONE_HELM_PROJECT_PRD
+    DRONE_REGISTRY_NAME_PRD:
+      from_secret: DRONE_REGISTRY_NAME_PRD
     ACR_USERNAME_PRD:
       from_secret: ACR_USERNAME_PRD
     ACR_PASSWORD_PRD:
       from_secret: ACR_PASSWORD_PRD
- 
   commands:
     - >
       node -e "
       const fs = require('fs');
       const env = process.env;
       let outputs = {};
- 
+
       if (env.DRONE_BRANCH === 'dev') {
         outputs.environment = 'development';
         outputs.environment_display = 'Dev';
-        outputs.release_repo = env.GHA_RELEASE_REPO_DEV;
-        outputs.kustomize_folder = env.GHA_PROJECT_REPO_DEV;
-        outputs.helm_folder = env.GHA_HELM_PROJECT_DEV;
-        outputs.acr_name = env.ACR_USERNAME_DEV + '.' + env.GHA_REGISTRY_DOMAIN;
+        outputs.release_repo = env.DRONE_RELEASE_REPO_DEV;
+        outputs.kustomize_folder = env.DRONE_PROJECT_REPO_DEV;
+        outputs.helm_folder = env.DRONE_HELM_PROJECT_DEV;
+        outputs.acr_name = env.ACR_USERNAME_DEV + '.' + env.DRONE_REGISTRY_DOMAIN;
         outputs.acr_username = env.ACR_USERNAME_DEV;
         outputs.acr_password = env.ACR_PASSWORD_DEV;
-        outputs.docker_tag = outputs.acr_name + '/' + env.GHA_IMAGE_NAME + ':' + env.DRONE_COMMIT_SHA;
+        outputs.docker_tag = outputs.acr_name + '/' + env.DRONE_IMAGE_NAME + ':' + env.DRONE_COMMIT_SHA;
         outputs.helm_tag = env.DRONE_COMMIT_SHA;
       } else if (env.DRONE_TAG && env.DRONE_TAG.includes('-rc')) {
         outputs.environment = 'staging';
         outputs.environment_display = 'Staging';
-        outputs.release_repo = env.GHA_RELEASE_REPO_STG;
-        outputs.kustomize_folder = env.GHA_PROJECT_REPO_STG;
-        outputs.helm_folder = env.GHA_HELM_PROJECT_STG;
-        outputs.acr_name = env.GHA_REGISTRY_NAME_STG + '.' + env.GHA_REGISTRY_DOMAIN;
+        outputs.release_repo = env.DRONE_RELEASE_REPO_STG;
+        outputs.kustomize_folder = env.DRONE_PROJECT_REPO_STG;
+        outputs.helm_folder = env.DRONE_HELM_PROJECT_STG;
+        outputs.acr_name = env.DRONE_REGISTRY_NAME_STG + '.' + env.DRONE_REGISTRY_DOMAIN;
         outputs.acr_username = env.ACR_USERNAME_STG;
         outputs.acr_password = env.ACR_PASSWORD_STG;
-        outputs.docker_tag = outputs.acr_name + '/' + env.GHA_IMAGE_NAME + ':' + env.DRONE_TAG;
+        outputs.docker_tag = outputs.acr_name + '/' + env.DRONE_IMAGE_NAME + ':' + env.DRONE_TAG;
         outputs.helm_tag = env.DRONE_TAG;
       } else if (env.DRONE_TAG && env.DRONE_TAG.includes('-avaxia')) {
         outputs.environment = 'production';
         outputs.environment_display = 'Production';
-        outputs.release_repo = env.GHA_RELEASE_REPO_PRD;
-        outputs.kustomize_folder = env.GHA_PROJECT_REPO_PRD;
-        outputs.helm_folder = env.GHA_HELM_PROJECT_PRD;
-        outputs.acr_name = env.GHA_REGISTRY_NAME_PRD + '.' + env.GHA_REGISTRY_DOMAIN;
+        outputs.release_repo = env.DRONE_RELEASE_REPO_PRD;
+        outputs.kustomize_folder = env.DRONE_PROJECT_REPO_PRD;
+        outputs.helm_folder = env.DRONE_HELM_PROJECT_PRD;
+        outputs.acr_name = env.DRONE_REGISTRY_NAME_PRD + '.' + env.DRONE_REGISTRY_DOMAIN;
         outputs.acr_username = env.ACR_USERNAME_PRD;
         outputs.acr_password = env.ACR_PASSWORD_PRD;
-        outputs.docker_tag = outputs.acr_name + '/' + env.GHA_IMAGE_NAME + ':' + env.DRONE_TAG;
+        outputs.docker_tag = outputs.acr_name + '/' + env.DRONE_IMAGE_NAME + ':' + env.DRONE_TAG;
         outputs.helm_tag = env.DRONE_TAG;
       } else {
         console.error('Unknown environment');
         process.exit(1);
       }
- 
+
       fs.writeFileSync('.env', Object.entries(env).map(e => e.join('=')).join(String.fromCharCode(10)));
       fs.writeFileSync('.outputs', Object.entries(outputs).map(e => e.join('=')).join(String.fromCharCode(10)));
- 
- 
       "
- 
 
 # Build & Push Docker (Kaniko)
-
 - name: docker-build-push
- 
   image: gcr.io/kaniko-project/executor:debug
- 
   environment:
- 
     DOCKER_CONFIG: /kaniko/.docker
- 
   commands:
- 
     - export $(cat .outputs | xargs)
- 
     - echo "DESTINATION=$docker_tag"
- 
     - mkdir -p /kaniko/.docker
- 
     - |
- 
       cat <<EOF > /kaniko/.docker/config.json
- 
       {
- 
         "auths": {
- 
           "$acr_name": {
- 
             "username": "$acr_username",
- 
             "password": "$acr_password"
- 
           }
- 
         }
- 
       }
- 
       EOF
- 
-    - /kaniko/executor \
- 
-        --context . \
- 
-        --dockerfile Dockerfile \
- 
-        --destination "$docker_tag"
+    - /kaniko/executor --context . --dockerfile Dockerfile --destination "$docker_tag"
 
 # REQUEST DEPLOYMENT APPROVAL (PROD TAGS ONLY)
-
 - name: deployment-approval
   image: python:3.11
   when:
@@ -197,12 +162,7 @@ steps:
     - pip install imapclient
     - python application-scripts/Pipelines/approval/approval-oneperson.py
 
-
 # Kustomize Release
-    # when:
-  #   status:
-  #     - success
-
 - name: kustomize-release
   image: k8s.gcr.io/kustomize/kustomize:v5.3.0
   environment:
@@ -218,9 +178,3 @@ steps:
     - git add .
     - git commit -m "Release $environment $docker_tag"
     - git push
-
-
-
-
-
-
