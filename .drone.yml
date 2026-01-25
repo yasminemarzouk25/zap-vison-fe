@@ -3,9 +3,11 @@ type: kubernetes
 name: ci-pipeline
 
 trigger:
-  branch:
-    - dev
-
+  event: [push, tag]
+  branch: [dev]
+  ref:
+    - refs/tags/v[0-9]+.[0-9]+.[0-9]+
+    - refs/tags/v[0-9]+.[0-9]+.[0-9]+-rc*
 steps:
 
 # SonarQube
