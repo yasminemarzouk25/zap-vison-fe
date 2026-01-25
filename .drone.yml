@@ -4,13 +4,13 @@ name: ci-pipeline
 
 trigger:
   branch:
-    - dev
-  tag:
-    - v[0-9]+.[0-9]+.[0-9]+
-    - v[0-9]+.[0-9]+.[0-9]+-avaxia*
-    - v[0-9]+.[0-9]+.[0-9]+-rc*
+    - dev      
   event:
-    - push
+    - push    
+  ref:
+    - refs/tags/v[0-9]+.[0-9]+.[0-9]+
+    - refs/tags/v[0-9]+.[0-9]+.[0-9]+-avaxia*
+    - refs/tags/v[0-9]+.[0-9]+.[0-9]+-rc*
 
 steps:
 
