@@ -130,90 +130,39 @@ steps:
 # Build & Push Docker (Kaniko)
 
 - name: docker-build-push
- 
-  image: gcr.io/kaniko-project/executor:debug
- 
-  environment:
- 
-    DOCKER_CONFIG: /kaniko/.docker
- 
+  image: docker:24
+  volumes:
+    - name: docker-sock
+      path: /var/run/docker.sock
   commands:
- 
     - export $(cat .outputs | xargs)
- 
-    - echo "DESTINATION=$docker_tag"
- 
-    - mkdir -p /kaniko/.docker
- 
-    - |
- 
-      cat <<EOF > /kaniko/.docker/config.json
- 
-      {
- 
-        "auths": {
- 
-          "$acr_name": {
- 
-            "username": "$acr_username",
- 
-            "password": "$acr_password"
- 
-          }
- 
-        }
- 
-      }
- 
-      EOF
- 
-    - /kaniko/executor \
- 
-        --context . \
- 
-        --dockerfile Dockerfile \
- 
-        --destination "$docker_tag"
+    - docker login $acr_name -u $acr_username -p $acr_password
+    - docker build -t $docker_tag .
+    - docker push $docker_tag
+
 
 # REQUEST DEPLOYMENT APPROVAL (PROD TAGS ONLY)
 
-- name: request approval
+- name: deployment-approval
   image: python:3.11
   when:
     event:
       - tag
-    branch:
-      - dev
   environment:
-    SMTP_SERVER:
-      from_secret: SMTP_SERVER
-    IMAP_SERVER:
-      from_secret: IMAP_SERVER
-    EMAIL_ADDRESS:
-      from_secret: EMAIL_ADDRESS
+    EMAIL_USERNAME:
+      from_secret: EMAIL_USERNAME
     EMAIL_PASSWORD:
       from_secret: EMAIL_PASSWORD
-    APPROVER_NAME:
-      from_secret: APPROVER_NAME
+    APPROVERS:
+      from_secret: APPROVERS
+    APPROVERS_NAME:
+      from_secret: APPROVERS_NAME
     PROJECT_ID:
       from_secret: PROJECT_ID
-    TAG:
-      from_secret: TAG
   commands:
-    - pip install -r application-scripts/Pipelines/approval/requirements.txt || true
-    - python3 application-scripts/Pipelines/approval/approval-oneperson.py
- 
- #test
-- name: prove-secret
-  image: alpine:3.18
-  environment:
-    DEPLOYMENT_TOKEN:
-      from_secret: DEPLOYMENT_TOKEN
-  commands:
-    - echo "TOKEN_LENGTH=$(printf "%s" "$DEPLOYMENT_TOKEN" | wc -c)"
-    - env | sort
-    - echo "Token exists? -> ${DEPLOYMENT_TOKEN:+YES}"
-    - echo "Token length -> ${#DEPLOYMENT_TOKEN}"
+    - pip install imapclient
+    - python application-scripts/Pipelines/approval/approval-oneperson.py
+
 
 # Kustomize Release
     # when:
