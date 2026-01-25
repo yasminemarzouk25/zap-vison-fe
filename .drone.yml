@@ -4,14 +4,13 @@ name: ci-pipeline
 
 trigger:
   branch:
-    - dev      
-  event:
-    - push    
+    - dev            
   ref:
     - refs/tags/v[0-9]+.[0-9]+.[0-9]+
-    - refs/tags/v[0-9]+.[0-9]+.[0-9]+-avaxia*
     - refs/tags/v[0-9]+.[0-9]+.[0-9]+-rc*
-
+    - refs/tags/v[0-9]+.[0-9]+.[0-9]+-avaxia*
+  event:
+    - push
 steps:
 
 # SonarQube
