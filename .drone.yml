@@ -126,7 +126,6 @@ steps:
     DOCKER_CONFIG: /kaniko/.docker
   commands:
     - export $(cat .outputs | xargs)
-    - echo "DESTINATION=$docker_tag"
     - mkdir -p /kaniko/.docker
     - |
       cat <<EOF > /kaniko/.docker/config.json
@@ -141,9 +140,10 @@ steps:
       EOF
     - /kaniko/executor --context . --dockerfile Dockerfile --destination "$docker_tag"
 
-# REQUEST DEPLOYMENT APPROVAL (PROD TAGS ONLY)
+
+# Deployment approval
+
 - name: deployment-approval
-  image: python:3.11
   when:
     event:
       - tag
@@ -159,12 +159,12 @@ steps:
     PROJECT_ID:
       from_secret: PROJECT_ID
   commands:
-    - pip install imapclient
     - python application-scripts/Pipelines/approval/approval-oneperson.py
 
-# Kustomize Release
+# -------------------------
+# Kustomize release
+# -------------------------
 - name: kustomize-release
-  image: k8s.gcr.io/kustomize/kustomize:v5.3.0
   environment:
     DEPLOYMENT_TOKEN:
       from_secret: DEPLOYMENT_TOKEN
@@ -175,6 +175,5 @@ steps:
     - git config user.name "yasminemarzouk"
     - git config user.email "marzouk.yasmine@esprit.tn"
     - kustomize edit set image $docker_tag
-    - git add .
-    - git commit -m "Release $environment $docker_tag"
+    - git commit -am "Release $environment $docker_tag"
     - git push
