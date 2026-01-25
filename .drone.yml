@@ -221,48 +221,20 @@ steps:
   #     - success
 
 - name: kustomize-release
-  image: alpine/git
+  image: k8s.gcr.io/kustomize/kustomize:v5.3.0
   environment:
     DEPLOYMENT_TOKEN:
       from_secret: DEPLOYMENT_TOKEN
-    RELEASE_REPO:
-      from_secret: RELEASE_REPO   # <-- set this secret to yasminemarzouk25/elasticsearch-kibana
-    KUSTOMIZE_FOLDER:
-      from_secret: KUSTOMIZE_FOLDER
-    DOCKER_TAG:
-      from_secret: DOCKER_TAG
-    ENVIRONMENT_DISPLAY:
-      from_secret: ENVIRONMENT_DISPLAY
   commands:
-    - |-
-      set -e
-
-      # ---- Derive IMAGE_NAME and IMAGE_TAG ----
-      IMAGE_NAME=$(echo "$DOCKER_TAG" | cut -d':' -f1 | cut -d'/' -f2)
-      IMAGE_TAG=$(echo "$DOCKER_TAG" | cut -d':' -f2)
-
-      echo "RELEASE_REPO=$RELEASE_REPO"
-      echo "IMAGE_NAME=$IMAGE_NAME"
-      echo "IMAGE_TAG=$IMAGE_TAG"
-      echo "Token length -> $(printf '%s' "$DEPLOYMENT_TOKEN" | wc -c)"
-
-      # ---- Git identity ----
-      git config --global user.name "yasminemarzouk"
-      git config --global user.email "marzouk.yasmine@esprit.tn"
-      git config --global --add safe.directory '*'
-
-      # ---- Clone with token ----
-      echo "Cloning https://${DEPLOYMENT_TOKEN}@github.com/${RELEASE_REPO}.git"
-      git clone https://${DEPLOYMENT_TOKEN}@github.com/${RELEASE_REPO}.git repo
-      cd repo/${KUSTOMIZE_FOLDER}
-
-      # ---- Kustomize ----
-      kustomize edit set image app=${IMAGE_NAME}:${IMAGE_TAG}
-
-      # ---- Commit & push ----
-      git status
-      git commit -am "Deploy ${ENVIRONMENT_DISPLAY:-env} - ${IMAGE_NAME}:${IMAGE_TAG}" || echo "Nothing to commit"
-      git push origin main
+    - export $(cat .outputs | xargs)
+    - git clone https://x-access-token:$DEPLOYMENT_TOKEN@github.com/$release_repo.git repo
+    - cd repo/$kustomize_folder
+    - git config user.name "yasminemarzouk"
+    - git config user.email "marzouk.yasmine@esprit.tn"
+    - kustomize edit set image $docker_tag
+    - git add .
+    - git commit -m "Release $environment $docker_tag"
+    - git push
 
 
 
