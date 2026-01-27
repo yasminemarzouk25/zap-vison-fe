@@ -6,16 +6,6 @@ trigger:
   event:
   - push
   - tag
-
-
-  branch:
-  - dev
-
-
-  ref:
-  - refs/tags/v[0-9]+.[0-9]+.[0-9]+
-  - refs/tags/v[0-9]+.[0-9]+.[0-9]+-rc.*
-  - refs/tags/v[0-9]+.[0-9]+.[0-9]+-avaxia.*
 steps:
 
 # SonarQube
