@@ -7,7 +7,7 @@ trigger:
     - push
     - tag
 steps:
-
+#
 # SonarQube
 - name: sonarqube
   image: sonarsource/sonar-scanner-cli
