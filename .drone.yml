@@ -3,8 +3,8 @@ type: kubernetes
 name: ci-pipeline
 
 trigger:
-  event:
-    - push
+  branch:
+    - dev
 steps:
 
 # SonarQube
