@@ -4,8 +4,8 @@ name: ci-pipeline
 
 trigger:
   event:
-  - push
-  - tag
+    - push
+    - tag
 steps:
 
 # SonarQube
