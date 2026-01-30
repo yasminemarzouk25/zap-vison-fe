@@ -161,18 +161,46 @@ steps:
     - python application-scripts/Pipelines/approval/approval-oneperson.py
 
 # Kustomize Release
-- name: kustomize-release
-  image: k8s.gcr.io/kustomize/kustomize:v5.3.0
+# - name: kustomize-release
+#   image: k8s.gcr.io/kustomize/kustomize:v5.3.0
+#   environment:
+#     DEPLOYMENT_TOKEN:
+#       from_secret: DEPLOYMENT_TOKEN
+#   commands:
+#     - export $(cat .outputs | xargs)
+#     - git clone https://x-access-token:$DEPLOYMENT_TOKEN@github.com/$release_repo.git repo
+#     - cd repo/$kustomize_folder
+#     - git config user.name "yasminemarzouk"
+#     - git config user.email "marzouk.yasmine@esprit.tn"
+#     - kustomize edit set image $docker_tag
+#     - git add .
+#     - git commit -m "Release $environment $docker_tag"
+#     - git push
+# Helm Release (update values.yaml tag)
+# Helm Release (kustomize-style)
+- name: helm-release
+  image: alpine:3.20
   environment:
     DEPLOYMENT_TOKEN:
       from_secret: DEPLOYMENT_TOKEN
   commands:
+    - apk add --no-cache git sed
     - export $(cat .outputs | xargs)
-    - git clone https://x-access-token:$DEPLOYMENT_TOKEN@github.com/$release_repo.git repo
-    - cd repo/$kustomize_folder
+
+    # clone helm repo (same style as kustomize-release)
+    - git clone https://x-access-token:$DEPLOYMENT_TOKEN@github.com/$helm_release_repo.git repo
+    - cd repo/$helm_folder
+
+    # same git identity style as your kustomize step (hardcoded)
     - git config user.name "yasminemarzouk"
     - git config user.email "marzouk.yasmine@esprit.tn"
-    - kustomize edit set image $docker_tag
+
+    # update values.yaml tag inside the selected section
+    - sed -i "/^${helm_values_section_name}:/,/^[[:space:]]*tag:/s/^\([[:space:]]*tag:\).*/\1 ${helm_tag}/" values.yaml
+
     - git add .
     - git commit -m "Release $environment $docker_tag"
     - git push
+
+
+
