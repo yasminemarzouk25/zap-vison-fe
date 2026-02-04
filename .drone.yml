@@ -78,7 +78,6 @@ steps:
         const env = process.env;
         const outputs = {};
 
-        // Helpers to avoid writing undefined into .outputs
         const req = (k) => {
           const v = env[k];
           if (!v) {
@@ -88,9 +87,7 @@ steps:
           return v;
         };
 
-        // Decide environment
         if (env.DRONE_BRANCH === 'dev') {
-          // DEV (branch build)
           outputs.environment = 'development';
           outputs.environment_display = 'Dev';
 
@@ -98,7 +95,7 @@ steps:
           outputs.kustomize_folder = req('DRONE_PROJECT_REPO_DEV');
 
           outputs.helm_folder = req('DRONE_HELM_PROJECT_DEV');
-          outputs.helm_release_repo = req('DRONE_RELEASE_REPO_DEV'); // same repo as release repo
+          outputs.helm_release_repo = req('DRONE_RELEASE_REPO_DEV');
           outputs.helm_values_section_name = 'dev';
 
           outputs.acr_name = `${req('ACR_USERNAME_DEV')}.${req('DRONE_REGISTRY_DOMAIN')}`;
@@ -109,7 +106,6 @@ steps:
           outputs.helm_tag = req('DRONE_COMMIT_SHA');
 
         } else if (env.DRONE_TAG && env.DRONE_TAG.includes('-rc')) {
-          // STAGING (tag build containing -rc)
           outputs.environment = 'staging';
           outputs.environment_display = 'Staging';
 
@@ -117,7 +113,7 @@ steps:
           outputs.kustomize_folder = req('DRONE_PROJECT_REPO_STG');
 
           outputs.helm_folder = req('DRONE_HELM_PROJECT_STG');
-          outputs.helm_release_repo = req('DRONE_RELEASE_REPO_STG'); // same repo as release repo
+          outputs.helm_release_repo = req('DRONE_RELEASE_REPO_STG');
           outputs.helm_values_section_name = 'staging';
 
           outputs.acr_name = `${req('DRONE_REGISTRY_NAME_STG')}.${req('DRONE_REGISTRY_DOMAIN')}`;
@@ -128,7 +124,6 @@ steps:
           outputs.helm_tag = req('DRONE_TAG');
 
         } else if (env.DRONE_TAG && env.DRONE_TAG.includes('-avaxia')) {
-          // PRODUCTION (tag build containing -avaxia)
           outputs.environment = 'production';
           outputs.environment_display = 'Production';
 
@@ -136,7 +131,7 @@ steps:
           outputs.kustomize_folder = req('DRONE_PROJECT_REPO_PRD');
 
           outputs.helm_folder = req('DRONE_HELM_PROJECT_PRD');
-          outputs.helm_release_repo = req('DRONE_RELEASE_REPO_PRD'); // same repo as release repo
+          outputs.helm_release_repo = req('DRONE_RELEASE_REPO_PRD');
           outputs.helm_values_section_name = 'production';
 
           outputs.acr_name = `${req('DRONE_REGISTRY_NAME_PRD')}.${req('DRONE_REGISTRY_DOMAIN')}`;
@@ -151,7 +146,19 @@ steps:
           process.exit(1);
         }
 
+        fs.writeFileSync(
+          '.env',
+          Object.entries(env).map(([k, v]) => `${k}=${v ?? ''}`).join('\n')
+        );
 
+        fs.writeFileSync(
+          '.outputs',
+          Object.entries(outputs).map(([k, v]) => `${k}=${v ?? ''}`).join('\n')
+        );
+
+        console.log('=== .outputs ===');
+        console.log(fs.readFileSync('.outputs', 'utf8'));
+        NODE
 
 
 # Build & Push Docker (Kaniko)
