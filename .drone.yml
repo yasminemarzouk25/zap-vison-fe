@@ -219,36 +219,45 @@ steps:
 
       echo "helm_release_repo=$helm_release_repo"
       echo "helm_folder=$helm_folder"
-      echo "helm_values_section_name=$helm_values_section_name"
+      echo "environment=$environment"
       echo "helm_tag=$helm_tag"
 
-      # quick sanity checks (will fail early with clear message)
-      [ -n "$DEPLOYMENT_TOKEN" ] || (echo "DEPLOYMENT_TOKEN is empty" && exit 1)
-      [ -n "$helm_release_repo" ] || (echo "helm_release_repo is empty" && exit 1)
-      [ -n "$helm_folder" ] || (echo "helm_folder is empty" && exit 1)
-      [ -n "$helm_values_section_name" ] || (echo "helm_values_section_name is empty" && exit 1)
-      [ -n "$helm_tag" ] || (echo "helm_tag is empty" && exit 1)
+      # Map environment → apps folder
+      if [ "$environment" = "development" ]; then
+        APPS_DIR="dev-apps"
+      elif [ "$environment" = "staging" ]; then
+        APPS_DIR="stg-apps"
+      elif [ "$environment" = "production" ]; then
+        APPS_DIR="prd-apps"
+      else
+        echo "Unknown environment: $environment"
+        exit 1
+      fi
+
+      echo "APPS_DIR=$APPS_DIR"
 
       git clone "https://x-access-token:$DEPLOYMENT_TOKEN@github.com/$helm_release_repo.git" repo
-
       cd repo
 
       echo "== repo root =="
       ls -la
 
-      echo "== helm folder ($helm_folder) =="
-      [ -d "$helm_folder" ] || (echo "Folder not found: $helm_folder" && exit 1)
-      ls -la "$helm_folder"
+      CHART_DIR="$helm_folder/$APPS_DIR"
+      VALUES_FILE="$CHART_DIR/values.yaml"
 
-      VALUES_FILE="$helm_folder/values.yaml"
-      [ -f "$VALUES_FILE" ] || (echo "values.yaml not found at $VALUES_FILE" && find . -maxdepth 5 -name values.yaml -print && exit 1)
+      echo "Using VALUES_FILE=$VALUES_FILE"
+
+      [ -f "$VALUES_FILE" ] || (echo "values.yaml not found at $VALUES_FILE" && exit 1)
 
       git config user.name "yasminemarzouk"
       git config user.email "marzouk.yasmine@esprit.tn"
 
-      sed -i "/^${helm_values_section_name}:/,/^[[:space:]]*tag:/s/^\([[:space:]]*tag:\).*/\1 ${helm_tag}/" "$VALUES_FILE"
+      # Update image tag
+      sed -i "s/^\([[:space:]]*tag:\).*/\1 ${helm_tag}/" "$VALUES_FILE"
 
+      echo "=== diff ==="
       git diff -- "$VALUES_FILE" || true
+
       git add "$VALUES_FILE"
       git commit -m "Release $environment $docker_tag" || echo "Nothing to commit"
       git push
