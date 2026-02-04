@@ -205,6 +205,7 @@ steps:
     - python application-scripts/Pipelines/approval/approval-oneperson.py
 
 # Helm Release (update values.yaml tag) - working
+# Helm Release (update values.yaml tag) - robust
 - name: helm-release
   image: alpine:3.20
   environment:
@@ -214,24 +215,46 @@ steps:
     - apk add --no-cache git sed
     - export $(cat .outputs | xargs)
 
-    - echo "helm_release_repo=$helm_release_repo"
-    - echo "helm_folder=$helm_folder"
-    - echo "helm_values_section_name=$helm_values_section_name"
-    - echo "helm_tag=$helm_tag"
+    - |-
+      set -e
 
-    - git clone https://x-access-token:$DEPLOYMENT_TOKEN@github.com/$helm_release_repo.git repo
-    - cd repo/$helm_folder
+      echo "helm_release_repo=$helm_release_repo"
+      echo "helm_folder=$helm_folder"
+      echo "helm_values_section_name=$helm_values_section_name"
+      echo "helm_tag=$helm_tag"
 
-    - git config user.name "yasminemarzouk"
-    - git config user.email "marzouk.yasmine@esprit.tn"
+      git clone "https://x-access-token:${DEPLOYMENT_TOKEN}@github.com/${helm_release_repo}.git" repo
 
-    # Update tag under the chosen section in values.yaml
-    - sed -i "/^${helm_values_section_name}:/,/^[[:space:]]*tag:/s/^\([[:space:]]*tag:\).*/\1 ${helm_tag}/" values.yaml
+      cd repo
 
-    - git diff -- values.yaml || true
-    - git add values.yaml
-    - git commit -m "Release $environment $docker_tag" || echo "Nothing to commit"
-    - git push
+      echo "== repo root =="
+      ls -la
+
+      echo "== helm folder (${helm_folder}) =="
+      if [ ! -d "${helm_folder}" ]; then
+        echo "Folder not found: ${helm_folder}"
+        exit 1
+      fi
+      ls -la "${helm_folder}"
+
+      VALUES_FILE="${helm_folder}/values.yaml"
+      if [ ! -f "${VALUES_FILE}" ]; then
+        echo "values.yaml not found at ${VALUES_FILE}"
+        echo "Searching for values.yaml:"
+        find . -maxdepth 5 -name "values.yaml" -print
+        exit 1
+      fi
+
+      git config user.name "yasminemarzouk"
+      git config user.email "marzouk.yasmine@esprit.tn"
+
+      # Update tag under the chosen section in values.yaml
+      sed -i "/^${helm_values_section_name}:/,/^[[:space:]]*tag:/s/^\([[:space:]]*tag:\).*/\1 ${helm_tag}/" "${VALUES_FILE}"
+
+      git diff -- "${VALUES_FILE}" || true
+      git add "${VALUES_FILE}"
+      git commit -m "Release ${environment} ${docker_tag}" || echo "Nothing to commit"
+      git push
 
 
 # Kustomize Release
