@@ -214,54 +214,47 @@ steps:
   commands:
     - apk add --no-cache git sed
     - export $(cat .outputs | xargs)
-    - |
-      set -e
+    - |-
+        set -e
 
-      echo "helm_release_repo=$helm_release_repo"
-      echo "helm_folder=$helm_folder"
-      echo "environment=$environment"
-      echo "helm_tag=$helm_tag"
+        echo "helm_release_repo=$helm_release_repo"
+        echo "helm_folder=$helm_folder"
+        echo "environment=$environment"
+        echo "helm_tag=$helm_tag"
 
-      # Map environment → apps folder
-      if [ "$environment" = "development" ]; then
-        APPS_DIR="dev-apps"
-      elif [ "$environment" = "staging" ]; then
-        APPS_DIR="stg-apps"
-      elif [ "$environment" = "production" ]; then
-        APPS_DIR="prd-apps"
-      else
-        echo "Unknown environment: $environment"
-        exit 1
-      fi
+        if [ "$environment" = "development" ]; then
+          APPS_DIR="dev-apps"
+        elif [ "$environment" = "staging" ]; then
+          APPS_DIR="stg-apps"
+        elif [ "$environment" = "production" ]; then
+          APPS_DIR="prd-apps"
+        else
+          echo "Unknown environment: $environment"
+          exit 1
+        fi
 
-      echo "APPS_DIR=$APPS_DIR"
+        echo "APPS_DIR=$APPS_DIR"
 
-      git clone "https://x-access-token:$DEPLOYMENT_TOKEN@github.com/$helm_release_repo.git" repo
-      cd repo
+        git clone "https://x-access-token:$DEPLOYMENT_TOKEN@github.com/$helm_release_repo.git" repo
+        cd repo
 
-      echo "== repo root =="
-      ls -la
+        VALUES_FILE="$helm_folder/$APPS_DIR/values.yaml"
+        echo "Using VALUES_FILE=$VALUES_FILE"
+        test -f "$VALUES_FILE" || (echo "values.yaml not found" && exit 1)
 
-      CHART_DIR="$helm_folder/$APPS_DIR"
-      VALUES_FILE="$CHART_DIR/values.yaml"
+        echo "== BEFORE (tag lines) =="
+        grep -nE '^[[:space:]]*tag:' "$VALUES_FILE" || true
 
-      echo "Using VALUES_FILE=$VALUES_FILE"
+        # Update only the FIRST 'tag:' occurrence (safe)
+        sed -i "0,/^[[:space:]]*tag:/s//tag: $helm_tag/" "$VALUES_FILE"
 
-      [ -f "$VALUES_FILE" ] || (echo "values.yaml not found at $VALUES_FILE" && exit 1)
+        echo "== AFTER (tag lines) =="
+        grep -nE '^[[:space:]]*tag:' "$VALUES_FILE" || true
 
-      git config user.name "yasminemarzouk"
-      git config user.email "marzouk.yasmine@esprit.tn"
-
-      # Update image tag
-      sed -i "s/^\([[:space:]]*tag:\).*/\1 ${helm_tag}/" "$VALUES_FILE"
-
-      echo "=== diff ==="
-      git diff -- "$VALUES_FILE" || true
-
-      git add "$VALUES_FILE"
-      git commit -m "Release $environment $docker_tag" || echo "Nothing to commit"
-      git push
-
+        git diff -- "$VALUES_FILE" || true
+        git add "$VALUES_FILE"
+        git commit -m "Release $environment $docker_tag" || echo "Nothing to commit"
+        git push
 
 # Kustomize Release
 # - name: kustomize-release
