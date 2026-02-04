@@ -69,78 +69,88 @@ steps:
       from_secret: ACR_USERNAME_PRD
     ACR_PASSWORD_PRD:
       from_secret: ACR_PASSWORD_PRD
+
   commands:
     - |-
-      node - <<'NODE'
-      const fs = require('fs');
+        node - <<'NODE'
+        const fs = require('fs');
 
-      const env = process.env;
-      const outputs = {};
+        const env = process.env;
+        const outputs = {};
 
-      if (env.DRONE_BRANCH === 'dev') {
-        outputs.environment = 'development';
-        outputs.environment_display = 'Dev';
+        // Helpers to avoid writing undefined into .outputs
+        const req = (k) => {
+          const v = env[k];
+          if (!v) {
+            console.error(`Missing required env var: ${k}`);
+            process.exit(1);
+          }
+          return v;
+        };
 
-        outputs.release_repo = env.DRONE_RELEASE_REPO_DEV;
-        outputs.kustomize_folder = env.DRONE_PROJECT_REPO_DEV;
+        // Decide environment
+        if (env.DRONE_BRANCH === 'dev') {
+          // DEV (branch build)
+          outputs.environment = 'development';
+          outputs.environment_display = 'Dev';
 
-        outputs.helm_folder = env.DRONE_HELM_PROJECT_DEV;
-        outputs.helm_release_repo = env.DRONE_RELEASE_REPO_DEV;
-        outputs.helm_values_section_name = 'dev';
+          outputs.release_repo = req('DRONE_RELEASE_REPO_DEV');
+          outputs.kustomize_folder = req('DRONE_PROJECT_REPO_DEV');
 
-        outputs.acr_name = `${env.ACR_USERNAME_DEV}.${env.DRONE_REGISTRY_DOMAIN}`;
-        outputs.acr_username = env.ACR_USERNAME_DEV;
-        outputs.acr_password = env.ACR_PASSWORD_DEV;
+          outputs.helm_folder = req('DRONE_HELM_PROJECT_DEV');
+          outputs.helm_release_repo = req('DRONE_RELEASE_REPO_DEV'); // same repo as release repo
+          outputs.helm_values_section_name = 'dev';
 
-        outputs.docker_tag = `${outputs.acr_name}/${env.DRONE_IMAGE_NAME}:${env.DRONE_COMMIT_SHA}`;
-        outputs.helm_tag = env.DRONE_COMMIT_SHA;
+          outputs.acr_name = `${req('ACR_USERNAME_DEV')}.${req('DRONE_REGISTRY_DOMAIN')}`;
+          outputs.acr_username = req('ACR_USERNAME_DEV');
+          outputs.acr_password = req('ACR_PASSWORD_DEV');
 
-      } else if (env.DRONE_TAG && env.DRONE_TAG.includes('-rc')) {
-        outputs.environment = 'staging';
-        outputs.environment_display = 'Staging';
+          outputs.docker_tag = `${outputs.acr_name}/${req('DRONE_IMAGE_NAME')}:${req('DRONE_COMMIT_SHA')}`;
+          outputs.helm_tag = req('DRONE_COMMIT_SHA');
 
-        outputs.release_repo = env.DRONE_RELEASE_REPO_STG;
-        outputs.kustomize_folder = env.DRONE_PROJECT_REPO_STG;
+        } else if (env.DRONE_TAG && env.DRONE_TAG.includes('-rc')) {
+          // STAGING (tag build containing -rc)
+          outputs.environment = 'staging';
+          outputs.environment_display = 'Staging';
 
-        outputs.helm_folder = env.DRONE_HELM_PROJECT_STG;
-        outputs.helm_release_repo = env.DRONE_RELEASE_REPO_STG;
-        outputs.helm_values_section_name = 'staging';
+          outputs.release_repo = req('DRONE_RELEASE_REPO_STG');
+          outputs.kustomize_folder = req('DRONE_PROJECT_REPO_STG');
 
-        outputs.acr_name = `${env.DRONE_REGISTRY_NAME_STG}.${env.DRONE_REGISTRY_DOMAIN}`;
-        outputs.acr_username = env.ACR_USERNAME_STG;
-        outputs.acr_password = env.ACR_PASSWORD_STG;
+          outputs.helm_folder = req('DRONE_HELM_PROJECT_STG');
+          outputs.helm_release_repo = req('DRONE_RELEASE_REPO_STG'); // same repo as release repo
+          outputs.helm_values_section_name = 'staging';
 
-        outputs.docker_tag = `${outputs.acr_name}/${env.DRONE_IMAGE_NAME}:${env.DRONE_TAG}`;
-        outputs.helm_tag = env.DRONE_TAG;
+          outputs.acr_name = `${req('DRONE_REGISTRY_NAME_STG')}.${req('DRONE_REGISTRY_DOMAIN')}`;
+          outputs.acr_username = req('ACR_USERNAME_STG');
+          outputs.acr_password = req('ACR_PASSWORD_STG');
 
-      } else if (env.DRONE_TAG && env.DRONE_TAG.includes('-avaxia')) {
-        outputs.environment = 'production';
-        outputs.environment_display = 'Production';
+          outputs.docker_tag = `${outputs.acr_name}/${req('DRONE_IMAGE_NAME')}:${req('DRONE_TAG')}`;
+          outputs.helm_tag = req('DRONE_TAG');
 
-        outputs.release_repo = env.DRONE_RELEASE_REPO_PRD;
-        outputs.kustomize_folder = env.DRONE_PROJECT_REPO_PRD;
+        } else if (env.DRONE_TAG && env.DRONE_TAG.includes('-avaxia')) {
+          // PRODUCTION (tag build containing -avaxia)
+          outputs.environment = 'production';
+          outputs.environment_display = 'Production';
 
-        outputs.helm_folder = env.DRONE_HELM_PROJECT_PRD;
-        outputs.helm_release_repo = env.DRONE_RELEASE_REPO_PRD;
-        outputs.helm_values_section_name = 'production';
+          outputs.release_repo = req('DRONE_RELEASE_REPO_PRD');
+          outputs.kustomize_folder = req('DRONE_PROJECT_REPO_PRD');
 
-        outputs.acr_name = `${env.DRONE_REGISTRY_NAME_PRD}.${env.DRONE_REGISTRY_DOMAIN}`;
-        outputs.acr_username = env.ACR_USERNAME_PRD;
-        outputs.acr_password = env.ACR_PASSWORD_PRD;
+          outputs.helm_folder = req('DRONE_HELM_PROJECT_PRD');
+          outputs.helm_release_repo = req('DRONE_RELEASE_REPO_PRD'); // same repo as release repo
+          outputs.helm_values_section_name = 'production';
 
-        outputs.docker_tag = `${outputs.acr_name}/${env.DRONE_IMAGE_NAME}:${env.DRONE_TAG}`;
-        outputs.helm_tag = env.DRONE_TAG;
+          outputs.acr_name = `${req('DRONE_REGISTRY_NAME_PRD')}.${req('DRONE_REGISTRY_DOMAIN')}`;
+          outputs.acr_username = req('ACR_USERNAME_PRD');
+          outputs.acr_password = req('ACR_PASSWORD_PRD');
 
-      } else {
-        console.error('Unknown environment');
-        process.exit(1);
-      }
+          outputs.docker_tag = `${outputs.acr_name}/${req('DRONE_IMAGE_NAME')}:${req('DRONE_TAG')}`;
+          outputs.helm_tag = req('DRONE_TAG');
 
-      fs.writeFileSync('.env', Object.entries(env).map(([k,v]) => `${k}=${v ?? ''}`).join('\n'));
-      fs.writeFileSync('.outputs', Object.entries(outputs).map(([k,v]) => `${k}=${v ?? ''}`).join('\n'));
+        } else {
+          console.error('Unknown environment: expected dev branch OR tag containing -rc OR tag containing -avaxia');
+          process.exit(1);
+        }
 
-      console.log('Wrote .outputs:\n' + fs.readFileSync('.outputs', 'utf8'));
-      NODE
 
 
 
