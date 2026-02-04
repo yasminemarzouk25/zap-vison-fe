@@ -70,79 +70,77 @@ steps:
     ACR_PASSWORD_PRD:
       from_secret: ACR_PASSWORD_PRD
   commands:
-  - node - <<'NODE'
-    const fs = require('fs');
+    - |-
+      node - <<'NODE'
+      const fs = require('fs');
 
-    const env = process.env;
-    const outputs = {};
+      const env = process.env;
+      const outputs = {};
 
-    if (env.DRONE_BRANCH === 'dev') {
-      outputs.environment = 'development';
-      outputs.environment_display = 'Dev';
+      if (env.DRONE_BRANCH === 'dev') {
+        outputs.environment = 'development';
+        outputs.environment_display = 'Dev';
 
-      outputs.release_repo = env.DRONE_RELEASE_REPO_DEV;
-      outputs.kustomize_folder = env.DRONE_PROJECT_REPO_DEV;
+        outputs.release_repo = env.DRONE_RELEASE_REPO_DEV;
+        outputs.kustomize_folder = env.DRONE_PROJECT_REPO_DEV;
 
-      outputs.helm_folder = env.DRONE_HELM_PROJECT_DEV;
-      outputs.helm_release_repo = env.DRONE_RELEASE_REPO_DEV;
-      outputs.helm_values_section_name = 'dev';
+        outputs.helm_folder = env.DRONE_HELM_PROJECT_DEV;
+        outputs.helm_release_repo = env.DRONE_RELEASE_REPO_DEV;
+        outputs.helm_values_section_name = 'dev';
 
-      outputs.acr_name = `${env.ACR_USERNAME_DEV}.${env.DRONE_REGISTRY_DOMAIN}`;
-      outputs.acr_username = env.ACR_USERNAME_DEV;
-      outputs.acr_password = env.ACR_PASSWORD_DEV;
+        outputs.acr_name = `${env.ACR_USERNAME_DEV}.${env.DRONE_REGISTRY_DOMAIN}`;
+        outputs.acr_username = env.ACR_USERNAME_DEV;
+        outputs.acr_password = env.ACR_PASSWORD_DEV;
 
-      outputs.docker_tag = `${outputs.acr_name}/${env.DRONE_IMAGE_NAME}:${env.DRONE_COMMIT_SHA}`;
-      outputs.helm_tag = env.DRONE_COMMIT_SHA;
+        outputs.docker_tag = `${outputs.acr_name}/${env.DRONE_IMAGE_NAME}:${env.DRONE_COMMIT_SHA}`;
+        outputs.helm_tag = env.DRONE_COMMIT_SHA;
 
-    } else if (env.DRONE_TAG && env.DRONE_TAG.includes('-rc')) {
-      outputs.environment = 'staging';
-      outputs.environment_display = 'Staging';
+      } else if (env.DRONE_TAG && env.DRONE_TAG.includes('-rc')) {
+        outputs.environment = 'staging';
+        outputs.environment_display = 'Staging';
 
-      outputs.release_repo = env.DRONE_RELEASE_REPO_STG;
-      outputs.kustomize_folder = env.DRONE_PROJECT_REPO_STG;
+        outputs.release_repo = env.DRONE_RELEASE_REPO_STG;
+        outputs.kustomize_folder = env.DRONE_PROJECT_REPO_STG;
 
-      outputs.helm_folder = env.DRONE_HELM_PROJECT_STG;
-      outputs.helm_release_repo = env.DRONE_RELEASE_REPO_STG;
-      outputs.helm_values_section_name = 'staging';
+        outputs.helm_folder = env.DRONE_HELM_PROJECT_STG;
+        outputs.helm_release_repo = env.DRONE_RELEASE_REPO_STG;
+        outputs.helm_values_section_name = 'staging';
 
-      outputs.acr_name = `${env.DRONE_REGISTRY_NAME_STG}.${env.DRONE_REGISTRY_DOMAIN}`;
-      outputs.acr_username = env.ACR_USERNAME_STG;
-      outputs.acr_password = env.ACR_PASSWORD_STG;
+        outputs.acr_name = `${env.DRONE_REGISTRY_NAME_STG}.${env.DRONE_REGISTRY_DOMAIN}`;
+        outputs.acr_username = env.ACR_USERNAME_STG;
+        outputs.acr_password = env.ACR_PASSWORD_STG;
 
-      outputs.docker_tag = `${outputs.acr_name}/${env.DRONE_IMAGE_NAME}:${env.DRONE_TAG}`;
-      outputs.helm_tag = env.DRONE_TAG;
+        outputs.docker_tag = `${outputs.acr_name}/${env.DRONE_IMAGE_NAME}:${env.DRONE_TAG}`;
+        outputs.helm_tag = env.DRONE_TAG;
 
-    } else if (env.DRONE_TAG && env.DRONE_TAG.includes('-avaxia')) {
-      outputs.environment = 'production';
-      outputs.environment_display = 'Production';
+      } else if (env.DRONE_TAG && env.DRONE_TAG.includes('-avaxia')) {
+        outputs.environment = 'production';
+        outputs.environment_display = 'Production';
 
-      outputs.release_repo = env.DRONE_RELEASE_REPO_PRD;
-      outputs.kustomize_folder = env.DRONE_PROJECT_REPO_PRD;
+        outputs.release_repo = env.DRONE_RELEASE_REPO_PRD;
+        outputs.kustomize_folder = env.DRONE_PROJECT_REPO_PRD;
 
-      outputs.helm_folder = env.DRONE_HELM_PROJECT_PRD;
-      outputs.helm_release_repo = env.DRONE_RELEASE_REPO_PRD;
-      outputs.helm_values_section_name = 'production';
+        outputs.helm_folder = env.DRONE_HELM_PROJECT_PRD;
+        outputs.helm_release_repo = env.DRONE_RELEASE_REPO_PRD;
+        outputs.helm_values_section_name = 'production';
 
-      outputs.acr_name = `${env.DRONE_REGISTRY_NAME_PRD}.${env.DRONE_REGISTRY_DOMAIN}`;
-      outputs.acr_username = env.ACR_USERNAME_PRD;
-      outputs.acr_password = env.ACR_PASSWORD_PRD;
+        outputs.acr_name = `${env.DRONE_REGISTRY_NAME_PRD}.${env.DRONE_REGISTRY_DOMAIN}`;
+        outputs.acr_username = env.ACR_USERNAME_PRD;
+        outputs.acr_password = env.ACR_PASSWORD_PRD;
 
-      outputs.docker_tag = `${outputs.acr_name}/${env.DRONE_IMAGE_NAME}:${env.DRONE_TAG}`;
-      outputs.helm_tag = env.DRONE_TAG;
+        outputs.docker_tag = `${outputs.acr_name}/${env.DRONE_IMAGE_NAME}:${env.DRONE_TAG}`;
+        outputs.helm_tag = env.DRONE_TAG;
 
-    } else {
-      console.error('Unknown environment');
-      process.exit(1);
-    }
+      } else {
+        console.error('Unknown environment');
+        process.exit(1);
+      }
 
-    // Write .env (all env vars)
-    fs.writeFileSync('.env', Object.entries(env).map(([k,v]) => `${k}=${v ?? ''}`).join('\n'));
+      fs.writeFileSync('.env', Object.entries(env).map(([k,v]) => `${k}=${v ?? ''}`).join('\n'));
+      fs.writeFileSync('.outputs', Object.entries(outputs).map(([k,v]) => `${k}=${v ?? ''}`).join('\n'));
 
-    // Write .outputs (only computed outputs)
-    fs.writeFileSync('.outputs', Object.entries(outputs).map(([k,v]) => `${k}=${v ?? ''}`).join('\n'));
-
-    console.log('Wrote .outputs:\n' + fs.readFileSync('.outputs', 'utf8'));
-    NODE
+      console.log('Wrote .outputs:\n' + fs.readFileSync('.outputs', 'utf8'));
+      NODE
 
 
 
