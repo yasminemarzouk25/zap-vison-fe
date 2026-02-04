@@ -214,8 +214,7 @@ steps:
   commands:
     - apk add --no-cache git sed
     - export $(cat .outputs | xargs)
-
-    - |-
+    - |
       set -e
 
       echo "helm_release_repo=$helm_release_repo"
@@ -223,37 +222,35 @@ steps:
       echo "helm_values_section_name=$helm_values_section_name"
       echo "helm_tag=$helm_tag"
 
-      git clone "https://x-access-token:${DEPLOYMENT_TOKEN}@github.com/${helm_release_repo}.git" repo
+      # quick sanity checks (will fail early with clear message)
+      [ -n "$DEPLOYMENT_TOKEN" ] || (echo "DEPLOYMENT_TOKEN is empty" && exit 1)
+      [ -n "$helm_release_repo" ] || (echo "helm_release_repo is empty" && exit 1)
+      [ -n "$helm_folder" ] || (echo "helm_folder is empty" && exit 1)
+      [ -n "$helm_values_section_name" ] || (echo "helm_values_section_name is empty" && exit 1)
+      [ -n "$helm_tag" ] || (echo "helm_tag is empty" && exit 1)
+
+      git clone "https://x-access-token:$DEPLOYMENT_TOKEN@github.com/$helm_release_repo.git" repo
 
       cd repo
 
       echo "== repo root =="
       ls -la
 
-      echo "== helm folder (${helm_folder}) =="
-      if [ ! -d "${helm_folder}" ]; then
-        echo "Folder not found: ${helm_folder}"
-        exit 1
-      fi
-      ls -la "${helm_folder}"
+      echo "== helm folder ($helm_folder) =="
+      [ -d "$helm_folder" ] || (echo "Folder not found: $helm_folder" && exit 1)
+      ls -la "$helm_folder"
 
-      VALUES_FILE="${helm_folder}/values.yaml"
-      if [ ! -f "${VALUES_FILE}" ]; then
-        echo "values.yaml not found at ${VALUES_FILE}"
-        echo "Searching for values.yaml:"
-        find . -maxdepth 5 -name "values.yaml" -print
-        exit 1
-      fi
+      VALUES_FILE="$helm_folder/values.yaml"
+      [ -f "$VALUES_FILE" ] || (echo "values.yaml not found at $VALUES_FILE" && find . -maxdepth 5 -name values.yaml -print && exit 1)
 
       git config user.name "yasminemarzouk"
       git config user.email "marzouk.yasmine@esprit.tn"
 
-      # Update tag under the chosen section in values.yaml
-      sed -i "/^${helm_values_section_name}:/,/^[[:space:]]*tag:/s/^\([[:space:]]*tag:\).*/\1 ${helm_tag}/" "${VALUES_FILE}"
+      sed -i "/^${helm_values_section_name}:/,/^[[:space:]]*tag:/s/^\([[:space:]]*tag:\).*/\1 ${helm_tag}/" "$VALUES_FILE"
 
-      git diff -- "${VALUES_FILE}" || true
-      git add "${VALUES_FILE}"
-      git commit -m "Release ${environment} ${docker_tag}" || echo "Nothing to commit"
+      git diff -- "$VALUES_FILE" || true
+      git add "$VALUES_FILE"
+      git commit -m "Release $environment $docker_tag" || echo "Nothing to commit"
       git push
 
 
